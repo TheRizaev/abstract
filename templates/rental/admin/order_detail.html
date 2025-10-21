@@ -1,0 +1,384 @@
+{% extends 'rental/admin/base_admin.html' %}
+{% load rental_filters %}
+{% block title %}Заявка #{{ order.id }} - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Заявка #{{ order.id }}</h1>
+    <div>
+        {% if order.status == 'pending' %}
+            <a href="{% url 'edit_order' order.id %}" class="btn btn-outline-warning">
+                <i class="fas fa-edit"></i> Редактировать заявку
+            </a>
+        {% endif %}
+        <a href="{% url 'rental:download_order_pdf' order.id %}" class="btn btn-outline-primary">
+            <i class="fas fa-download"></i> Скачать PDF
+        </a>
+        <a href="{% url 'admin_orders' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к списку
+        </a>
+    </div>
+</div>
+
+{% if order.status == 'pending' %}
+<div class="alert alert-info border-0 shadow-sm">
+    <i class="fas fa-info-circle"></i>
+    <strong>Заявка ожидает подтверждения:</strong> Вы можете редактировать эту заявку, изменять товары и их количество.
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Информация о заявке</h5>
+            </div>
+            <div class="card-body">
+                <!-- Контактная информация -->
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Контактное лицо:</strong></div>
+                    <div class="col-sm-9">{{ order.contact_person }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Основной телефон:</strong></div>
+                    <div class="col-sm-9">{{ order.phone1 }}</div>
+                </div>
+                {% if order.phone2 %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Дополнительный телефон:</strong></div>
+                    <div class="col-sm-9">{{ order.phone2 }}</div>
+                </div>
+                {% endif %}
+                
+                <!-- НОВЫЕ ПОЛЯ -->
+                {% if order.production_name %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Название продакшена:</strong></div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border px-3 py-2">
+                            <i class="fas fa-video me-1"></i>{{ order.production_name }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if order.project_name %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Название проекта:</strong></div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-success bg-opacity-10 text-success border px-3 py-2">
+                            <i class="fas fa-project-diagram me-1"></i>{{ order.project_name }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Период аренды -->
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Период аренды:</strong></div>
+                    <div class="col-sm-9">
+                        {{ order.rental_start|date:"d.m.Y" }} - {{ order.rental_end|date:"d.m.Y" }}
+                        <span class="badge bg-info ms-2">{{ order.get_rental_days }} дн.</span>
+                    </div>
+                </div>
+                
+                <!-- Дата создания -->
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Дата создания:</strong></div>
+                    <div class="col-sm-9">{{ order.created_at|date:"d.m.Y H:i" }}</div>
+                </div>
+                
+                <!-- Создана админом -->
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Создана админом:</strong></div>
+                    <div class="col-sm-9">
+                        {% if order.created_by_admin %}
+                            <span class="badge bg-info">Да</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Нет</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Комментарий -->
+                {% if order.comment %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Комментарий:</strong></div>
+                    <div class="col-sm-9">{{ order.get_display_comment }}</div>
+                </div>
+                {% endif %}
+                
+                <!-- Финансовая информация -->
+                <hr class="my-4">
+                <h6 class="text-muted mb-3">
+                    <i class="fas fa-calculator me-2"></i>Финансовая информация
+                </h6>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Стоимость аренды:</strong></div>
+                    <div class="col-sm-9">
+                        <span class="h5 text-success">{{ order.total_amount|format_price }} сум</span>
+                        <small class="text-muted d-block">{{ order.get_daily_average|format_price }} сум/день</small>
+                    </div>
+                </div>
+                
+                <!-- СУММА ЗАЛОГА -->
+                {% if order.deposit_amount > 0 %}
+                <div class="row mb-3">
+                    <div class="col-sm-3"><strong>Сумма залога:</strong></div>
+                    <div class="col-sm-9">
+                        <span class="h6 text-warning">
+                            <i class="fas fa-shield-alt me-1"></i>{{ order.deposit_amount|format_price }} сум
+                        </span>
+                        <small class="text-muted d-block">Залог за оборудование</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Товары в заявке</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Артикул</th>
+                                <th>Количество</th>
+                                <th>Цена за период</th>
+                                <th>Сумма</th>
+                                <th>Место хранения</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items.all %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if item.product.photo %}
+                                            <img src="{{ item.product.photo.url }}" alt="{{ item.product.name }}" style="width: 40px; height: 40px; object-fit: cover;" class="rounded me-2">
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ item.product.get_display_name }}</strong><br>
+                                            <small class="text-muted">{{ item.product.daily_price|format_price }} сум/день</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><code>{{ item.product.article }}</code></td>
+                                <td>{{ item.quantity }} шт.</td>
+                                <td>{{ item.price|format_price }} сум</td>
+                                <td><strong>{{ item.get_total|format_price }} сум</strong></td>
+                                <td><span class="badge bg-info">{{ item.product.shelf }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <td colspan="4"><strong>Итого:</strong></td>
+                                <td><strong class="text-success">{{ order.total_amount|format_price }} сум</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Управление статусами</h5>
+            </div>
+            <div class="card-body">
+                <!-- Показываем предупреждение для завершенных и отклоненных заявок -->
+                {% if order.status == 'completed' %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> 
+                        <strong>Заявка завершена</strong><br>
+                        Изменение статуса заблокировано
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Статус заявки</label>
+                        <input type="text" class="form-control" value="Завершена" readonly>
+                    </div>
+                {% elif order.status == 'rejected' %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle"></i> 
+                        <strong>Заявка отклонена</strong><br>
+                        Изменение статуса заблокировано
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Статус заявки</label>
+                        <input type="text" class="form-control" value="Отклонена" readonly>
+                    </div>
+                {% else %}
+                    <form id="statusForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Статус заявки</label>
+                            <select name="status" class="form-select" id="orderStatus">
+                                <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Ожидает подтверждения</option>
+                                <option value="confirmed" {% if order.status == 'confirmed' %}selected{% endif %}>Подтверждена</option>
+                                <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Завершена</option>
+                                <option value="rejected" {% if order.status == 'rejected' %}selected{% endif %}>Отклонена</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 mb-3">
+                            <i class="fas fa-save"></i> Сохранить изменения
+                        </button>
+                    </form>
+                {% endif %}
+                
+                <!-- Статус оплаты можно изменять всегда -->
+                <form id="paymentForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Статус оплаты</label>
+                        <select name="payment_status" class="form-select" id="paymentStatus">
+                            <option value="unpaid" {% if order.payment_status == 'unpaid' %}selected{% endif %}>Не оплачена</option>
+                            <option value="paid" {% if order.payment_status == 'paid' %}selected{% endif %}>Оплачена</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-credit-card"></i> Обновить статус оплаты
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Финансовая сводка -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line me-2"></i>Финансовая сводка</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Стоимость аренды:</span>
+                        <strong class="text-success">{{ order.total_amount|format_price }} сум</strong>
+                    </div>
+                </div>
+                
+                {% if order.deposit_amount > 0 %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Сумма залога:</span>
+                        <strong class="text-warning">{{ order.deposit_amount|format_price }} сум</strong>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                {% endif %}
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>За день:</span>
+                        <span class="text-muted">{{ order.get_daily_average|format_price }} сум/день</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Период:</span>
+                        <span class="badge bg-info">{{ order.get_rental_days }} дн.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Статус товаров</h5>
+            </div>
+            <div class="card-body">
+                {% for item in order.items.all %}
+                <div class="mb-2">
+                    <strong>{{ item.product.name }}</strong><br>
+                    <small class="text-muted">
+                        Заказано: {{ item.quantity }} шт.<br>
+                        Доступно сейчас: {{ item.product.available_quantity }} шт.
+                    </small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Обработка формы статуса заявки
+{% if order.status not in 'completed,rejected' %}
+document.getElementById('statusForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`{% url 'update_order_status' order.id %}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Статус заявки обновлен');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showAlert('danger', data.error || 'Не удалось обновить статус');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('danger', 'Ошибка при обновлении статуса');
+    });
+});
+{% endif %}
+
+// Обработка формы статуса оплаты - можно менять всегда
+document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`{% url 'update_order_status' order.id %}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', 'Статус оплаты обновлен');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showAlert('danger', data.error || 'Не удалось обновить статус оплаты');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('danger', 'Ошибка при обновлении статуса оплаты');
+    });
+});
+
+function showAlert(type, message) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    document.querySelector('main').insertBefore(alert, document.querySelector('main').firstChild);
+}
+</script>
+{% endblock %}

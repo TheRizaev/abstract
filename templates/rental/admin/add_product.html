@@ -1,0 +1,1031 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Добавить товар - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Добавить товар</h1>
+    <a href="{% url 'product_management' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Назад к списку
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">Название товара</label>
+                        <div class="autocomplete-container position-relative">
+                            {{ form.name }}
+                            <div id="autocomplete-dropdown" class="autocomplete-dropdown position-absolute w-100 d-none">
+                                <!-- Сюда будут добавляться предложения -->
+                            </div>
+                        </div>
+                        {% if form.name.errors %}
+                            <div class="text-danger">{{ form.name.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            <i class="fas fa-lightbulb"></i> Начните вводить название - система предложит варианты из существующих товаров
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.barcode.id_for_label }}" class="form-label">Штрих-код</label>
+                        {{ form.barcode }}
+                        {% if form.barcode.errors %}
+                            <div class="text-danger">{{ form.barcode.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Оставьте пустым для автоматической генерации</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.photo.id_for_label }}" class="form-label">Фото</label>
+                        <div class="photo-upload-container">
+                            <!-- Кастомная область для загрузки -->
+                            <div class="photo-drop-area border rounded p-4 text-center" id="photoDropArea">
+                                <div class="drop-content">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                    <h5>Перетащите изображение сюда</h5>
+                                    <p class="text-muted">или нажмите для выбора файла<br>
+                                    Также можете вставить из буфера обмена (Ctrl+V)</p>
+                                    <div class="preview-container mt-3" id="previewContainer" style="display: none;">
+                                        <img id="imagePreview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage()">
+                                                <i class="fas fa-times"></i> Удалить
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{ form.photo }}
+                        </div>
+                        {% if form.photo.errors %}
+                            <div class="text-danger">{{ form.photo.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                            Описание 
+                            <small class="text-muted">(поддерживается Markdown)</small>
+                        </label>
+                        <div class="description-container">
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <div class="mb-2">
+                                        <small class="text-muted fw-bold">Редактирование:</small>
+                                        <div class="markdown-toolbar mb-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('**', '**')" title="Жирный">
+                                                <i class="fas fa-bold"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('*', '*')" title="Курсив">
+                                                <i class="fas fa-italic"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('- ', '')" title="Список">
+                                                <i class="fas fa-list"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertMarkdown('[', '](http://)')" title="Ссылка">
+                                                <i class="fas fa-link"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {{ form.description }}
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="mb-2">
+                                        <small class="text-muted fw-bold">Предварительный просмотр:</small>
+                                    </div>
+                                    <div class="markdown-preview border rounded p-3" id="markdownPreview" style="min-height: 150px; background-color: #f8f9fa;">
+                                        <p class="text-muted">Предварительный просмотр появится здесь...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.description.errors %}
+                            <div class="text-danger">{{ form.description.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Поддерживаемый синтаксис: **жирный**, *курсив*, - список, [ссылка](URL)
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.quantity.id_for_label }}" class="form-label">Количество</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}
+                            <div class="text-danger">{{ form.quantity.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.daily_price.id_for_label }}" class="form-label">Цена за день (сум)</label>
+                        {{ form.daily_price }}
+                        {% if form.daily_price.errors %}
+                            <div class="text-danger">{{ form.daily_price.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.shelf.id_for_label }}" class="form-label">Место хранения</label>
+                        {{ form.shelf }}
+                        {% if form.shelf.errors %}
+                            <div class="text-danger">{{ form.shelf.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.tags.id_for_label }}" class="form-label">Теги</label>
+                        
+                        <!-- Поиск тегов -->
+                        <div class="mb-3">
+                            <input type="text" id="tagSearch" class="form-control" placeholder="Поиск тегов..." onkeyup="filterTags()">
+                            <small class="form-text text-muted">Начните вводить название тега для поиска</small>
+                        </div>
+                        
+                        <!-- Выбранные теги -->
+                        <div class="mb-3">
+                            <div id="selectedTags" class="border rounded p-2" style="min-height: 60px; background-color: #f8f9fa;">
+                                <small class="text-muted">Выбранные теги будут отображаться здесь</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Иерархическое отображение тегов как на лицевой стороне -->
+                        <div class="tags-selection border rounded p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                            <div id="hierarchicalTags">
+                                <!-- Сюда будут загружены теги в иерархической структуре -->
+                                <div class="text-center p-3">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Загрузка...</span>
+                                    </div>
+                                    <div class="mt-2">Загрузка структуры тегов...</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.tags.errors %}
+                            <div class="text-danger">{{ form.tags.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Выберите подходящие категории для товара</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Сохранить
+                </button>
+                <a href="{% url 'product_management' %}" class="btn btn-outline-secondary">
+                    Отмена
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Стили для автозаполнения */
+.autocomplete-dropdown {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.15s ease;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.active {
+    background-color: #e9ecef;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+/* Стили для иерархических тегов */
+.hierarchical-tag-group {
+    margin-bottom: 1rem;
+}
+
+.tag-group-header {
+    background: #e9ecef;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border: 1px solid #dee2e6;
+}
+
+.tag-group-header:hover {
+    background: #dee2e6;
+}
+
+.tag-group-header .toggle-icon {
+    transition: transform 0.3s ease;
+    margin-right: 0.5rem;
+}
+
+.tag-group-header.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.tag-group-content {
+    padding-left: 1rem;
+    border-left: 2px solid #dee2e6;
+    margin-left: 0.5rem;
+    transition: max-height 0.3s ease;
+    overflow: hidden;
+}
+
+.tag-group-content.collapsed {
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.child-tag-group {
+    margin-left: 1rem;
+    margin-top: 0.5rem;
+}
+
+.tag-option {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.15s ease;
+}
+
+.tag-option:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.tag-option.hidden {
+    display: none;
+}
+
+.form-check-input:checked + .form-check-label {
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.selected-tag {
+    display: inline-block;
+    background-color: #0d6efd;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    margin: 0.125rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+.selected-tag .remove-tag {
+    background: none;
+    border: none;
+    color: white;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.selected-tag .remove-tag:hover {
+    color: #ffc107;
+}
+
+#selectedTags:empty:before {
+    content: "Выбранные теги будут отображаться здесь";
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+/* Стили для загрузки фото */
+.photo-drop-area {
+    border: 2px dashed #dee2e6 !important;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.photo-drop-area:hover {
+    border-color: #3498db !important;
+    background-color: #e3f2fd;
+}
+
+.photo-drop-area.dragover {
+    border-color: #3498db !important;
+    background-color: #e3f2fd;
+    transform: scale(1.02);
+}
+
+.photo-upload-container input[type="file"] {
+    display: none;
+}
+
+/* Стили для редактора Markdown */
+.markdown-toolbar {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.markdown-preview {
+    background-color: #f8f9fa;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-preview p {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-preview ul, .markdown-preview ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+</style>
+
+<script>
+// Переменные для автозаполнения
+let autocompleteTimeout;
+let currentFocus = -1;
+
+// Функция автозаполнения названий товаров
+function setupProductNameAutocomplete() {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    
+    if (!nameInput || !dropdown) return;
+    
+    nameInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Очищаем предыдущий таймер
+        clearTimeout(autocompleteTimeout);
+        
+        if (query.length < 2) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        
+        // Задержка для уменьшения нагрузки на сервер
+        autocompleteTimeout = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    });
+    
+    // Обработка клавиш навигации
+    nameInput.addEventListener('keydown', function(e) {
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocus++;
+            if (currentFocus >= items.length) currentFocus = 0;
+            setActiveItem(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocus--;
+            if (currentFocus < 0) currentFocus = items.length - 1;
+            setActiveItem(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentFocus > -1 && items[currentFocus]) {
+                selectSuggestion(items[currentFocus].textContent);
+            }
+        } else if (e.key === 'Escape') {
+            dropdown.classList.add('d-none');
+            currentFocus = -1;
+        }
+    });
+    
+    // Скрытие при клике вне элемента
+    document.addEventListener('click', function(e) {
+        if (!nameInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('d-none');
+        }
+    });
+}
+
+// Получение предложений с сервера
+function fetchSuggestions(query) {
+    fetch(`/superuser/api/product-name-autocomplete/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            displaySuggestions(data.suggestions);
+        })
+        .catch(error => {
+            console.error('Ошибка автозаполнения:', error);
+        });
+}
+
+// Отображение предложений
+function displaySuggestions(suggestions) {
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    dropdown.innerHTML = '';
+    currentFocus = -1;
+    
+    if (suggestions.length === 0) {
+        dropdown.classList.add('d-none');
+        return;
+    }
+    
+    suggestions.forEach(suggestion => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = suggestion;
+        item.addEventListener('click', () => selectSuggestion(suggestion));
+        dropdown.appendChild(item);
+    });
+    
+    dropdown.classList.remove('d-none');
+}
+
+// Выбор предложения
+function selectSuggestion(suggestion) {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    
+    nameInput.value = suggestion;
+    dropdown.classList.add('d-none');
+    currentFocus = -1;
+    
+    // Фокус на следующее поле
+    nameInput.blur();
+}
+
+// Установка активного элемента
+function setActiveItem(items) {
+    items.forEach((item, index) => {
+        if (index === currentFocus) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// Загрузка иерархической структуры тегов
+function loadHierarchicalTags() {
+    fetch('{% url "tag_structure_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            displayHierarchicalTags(data.tree);
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки тегов:', error);
+            document.getElementById('hierarchicalTags').innerHTML = 
+                '<div class="text-danger">Ошибка загрузки структуры тегов</div>';
+        });
+}
+
+// Отображение иерархических тегов
+function displayHierarchicalTags(tags, level = 0) {
+    let html = '';
+    
+    tags.forEach(tag => {
+        const hasChildren = tag.children.length > 0;
+        const indent = level * 20;
+        
+        if (hasChildren && level === 0) {
+            // Корневая группа с возможностью сворачивания
+            html += `
+                <div class="hierarchical-tag-group">
+                    <div class="tag-group-header" onclick="toggleTagGroup('group-${tag.id}')">
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                        <i class="fas fa-folder text-primary me-2"></i>
+                        ${tag.name}
+                        <span class="badge bg-primary ms-2">${tag.products_count}</span>
+                    </div>
+                    <div class="tag-group-content" id="group-${tag.id}">
+                        ${displayTagOption(tag, level)}
+                        ${hasChildren ? displayHierarchicalTags(tag.children, level + 1) : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            // Обычный тег или дочерний тег
+            html += displayTagOption(tag, level);
+            if (hasChildren) {
+                html += `<div class="child-tag-group">${displayHierarchicalTags(tag.children, level + 1)}</div>`;
+            }
+        }
+    });
+    
+    return html;
+}
+
+// Отображение отдельной опции тега
+function displayTagOption(tag, level) {
+    const indent = level * 20;
+    return `
+        <div class="form-check mb-2 tag-option" data-tag-name="${tag.name.toLowerCase()}" style="margin-left: ${indent}px;">
+            <input class="form-check-input" type="checkbox" name="tags" value="${tag.id}" id="tag_${tag.id}" onchange="updateSelectedTags()">
+            <label class="form-check-label ms-2" for="tag_${tag.id}">
+                <i class="fas fa-tag me-1 text-primary"></i>
+                ${tag.name}
+                ${tag.products_count > 0 ? `<span class="badge bg-secondary ms-1">${tag.products_count}</span>` : ''}
+            </label>
+        </div>
+    `;
+}
+
+// Переключение групп тегов
+function toggleTagGroup(groupId) {
+    const content = document.getElementById(groupId);
+    const header = content.previousElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+    
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        content.style.maxHeight = content.scrollHeight + 'px';
+        header.classList.remove('collapsed');
+        icon.classList.remove('fa-chevron-right');
+        icon.classList.add('fa-chevron-down');
+    } else {
+        content.style.maxHeight = '0px';
+        header.classList.add('collapsed');
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-right');
+        setTimeout(() => {
+            content.classList.add('collapsed');
+        }, 300);
+    }
+}
+
+// Завершение загрузки тегов
+function completeTagsLoading() {
+    const container = document.getElementById('hierarchicalTags');
+    
+    fetch('{% url "tag_structure_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            const html = displayHierarchicalTags(data.tree);
+            container.innerHTML = html || '<div class="text-muted text-center p-3">Теги не найдены</div>';
+            
+            // Инициализируем все группы как раскрытые
+            const groups = container.querySelectorAll('.tag-group-content');
+            groups.forEach(group => {
+                group.style.maxHeight = group.scrollHeight + 'px';
+            });
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки тегов:', error);
+            container.innerHTML = '<div class="text-danger text-center p-3">Ошибка загрузки структуры тегов</div>';
+        });
+}
+
+// Функция фильтрации тегов
+function filterTags() {
+    const searchTerm = document.getElementById('tagSearch').value.toLowerCase();
+    const tagOptions = document.querySelectorAll('.tag-option');
+    const tagGroups = document.querySelectorAll('.hierarchical-tag-group');
+    
+    tagOptions.forEach(function(option) {
+        const tagName = option.getAttribute('data-tag-name');
+        const label = option.querySelector('label').textContent.toLowerCase();
+        
+        if (tagName.includes(searchTerm) || label.includes(searchTerm)) {
+            option.classList.remove('hidden');
+            // Показываем родительскую группу
+            const parentGroup = option.closest('.hierarchical-tag-group');
+            if (parentGroup) {
+                parentGroup.style.display = 'block';
+                // Раскрываем группу
+                const content = parentGroup.querySelector('.tag-group-content');
+                if (content && content.classList.contains('collapsed')) {
+                    toggleTagGroup(content.id);
+                }
+            }
+        } else {
+            option.classList.add('hidden');
+        }
+    });
+    
+    // Скрываем пустые группы
+    if (searchTerm) {
+        tagGroups.forEach(group => {
+            const visibleOptions = group.querySelectorAll('.tag-option:not(.hidden)');
+            if (visibleOptions.length === 0) {
+                group.style.display = 'none';
+            } else {
+                group.style.display = 'block';
+            }
+        });
+    } else {
+        // Если поиск очищен, показываем все группы
+        tagGroups.forEach(group => {
+            group.style.display = 'block';
+        });
+    }
+}
+
+function updateSelectedTags() {
+    const selectedTags = document.getElementById('selectedTags');
+    const checkboxes = document.querySelectorAll('.tag-option input[type="checkbox"]:checked');
+    
+    // Очищаем контейнер
+    selectedTags.innerHTML = '';
+    
+    if (checkboxes.length === 0) {
+        selectedTags.innerHTML = '<small class="text-muted">Выбранные теги будут отображаться здесь</small>';
+        return;
+    }
+    
+    // Добавляем выбранные теги
+    checkboxes.forEach(function(checkbox) {
+        const label = checkbox.parentElement.querySelector('label');
+        const tagName = label.textContent.trim();
+        
+        const tagElement = document.createElement('span');
+        tagElement.className = 'selected-tag';
+        tagElement.innerHTML = `
+            <i class="fas fa-tag me-1"></i>
+            ${tagName}
+            <button type="button" class="remove-tag" onclick="removeTag('${checkbox.id}')">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        selectedTags.appendChild(tagElement);
+    });
+}
+
+// Новая функция для автоматического выбора родительских тегов
+function selectParentTags(tagCheckbox) {
+    // Получаем данные о теге из API
+    const tagId = tagCheckbox.value;
+    
+    fetch('{% url "tag_structure_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            // Находим выбранный тег в структуре
+            const selectedTag = findTagInTree(data.tree, parseInt(tagId));
+            if (selectedTag) {
+                // Выбираем всех родителей
+                selectParentsRecursively(selectedTag, data.tree);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка получения структуры тегов:', error);
+        });
+}
+
+// Функция для поиска тега в дереве
+function findTagInTree(tree, tagId) {
+    for (let tag of tree) {
+        if (tag.id === tagId) {
+            return tag;
+        }
+        if (tag.children && tag.children.length > 0) {
+            const found = findTagInTree(tag.children, tagId);
+            if (found) {
+                return found;
+            }
+        }
+    }
+    return null;
+}
+
+// Функция для рекурсивного выбора родителей
+function selectParentsRecursively(tag, fullTree) {
+    // Находим родителя этого тега
+    const parent = findParentOfTag(fullTree, tag.id);
+    if (parent) {
+        // Выбираем родительский чекбокс
+        const parentCheckbox = document.getElementById(`tag_${parent.id}`);
+        if (parentCheckbox && !parentCheckbox.checked) {
+            parentCheckbox.checked = true;
+            // Рекурсивно выбираем родителей родителя
+            selectParentsRecursively(parent, fullTree);
+        }
+    }
+}
+
+// Функция для поиска родителя тега
+function findParentOfTag(tree, tagId, parent = null) {
+    for (let tag of tree) {
+        if (tag.id === tagId) {
+            return parent;
+        }
+        if (tag.children && tag.children.length > 0) {
+            const found = findParentOfTag(tag.children, tagId, tag);
+            if (found) {
+                return found;
+            }
+        }
+    }
+    return null;
+}
+
+// Обновляем обработчик изменения чекбоксов
+document.addEventListener('DOMContentLoaded', function() {
+    // Добавляем обработчики для всех чекбоксов тегов
+    setTimeout(() => {
+        document.querySelectorAll('.tag-option input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    selectParentTags(this);
+                }
+                updateSelectedTags();
+            });
+        });
+    }, 1000);
+});
+
+// Функция удаления тега
+function removeTag(checkboxId) {
+    const checkbox = document.getElementById(checkboxId);
+    if (checkbox) {
+        checkbox.checked = false;
+        updateSelectedTags();
+    }
+}
+
+// Функции для работы с фото
+function setupPhotoUpload() {
+    const dropArea = document.getElementById('photoDropArea');
+    const fileInput = document.getElementById('photoInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+
+    // Клик по области загрузки
+    dropArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Drag & Drop
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('dragover');
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.classList.remove('dragover');
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+            handleImageFile(files[0]);
+        }
+    });
+
+    // Выбор файла
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleImageFile(e.target.files[0]);
+        }
+    });
+
+    // Вставка из буфера обмена
+    document.addEventListener('paste', (e) => {
+        const items = e.clipboardData.items;
+        for (let item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                handleImageFile(file);
+                break;
+            }
+        }
+    });
+}
+
+function handleImageFile(file) {
+    const previewContainer = document.getElementById('previewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const fileInput = document.getElementById('photoInput');
+    
+    // Создаем DataTransfer для установки файла в input
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+
+    // Показываем предварительный просмотр
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        imagePreview.src = e.target.result;
+        previewContainer.style.display = 'block';
+        
+        // Скрываем текст загрузки
+        const dropContent = document.querySelector('.drop-content > *:not(#previewContainer)');
+        document.querySelector('.drop-content h5').style.display = 'none';
+        document.querySelector('.drop-content p').style.display = 'none';
+        document.querySelector('.drop-content i').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearImage() {
+    const fileInput = document.getElementById('photoInput');
+    const previewContainer = document.getElementById('previewContainer');
+    
+    fileInput.value = '';
+    previewContainer.style.display = 'none';
+    
+    // Показываем текст загрузки обратно
+    document.querySelector('.drop-content h5').style.display = 'block';
+    document.querySelector('.drop-content p').style.display = 'block';
+    document.querySelector('.drop-content i').style.display = 'block';
+}
+
+// Функции для работы с Markdown
+function setupMarkdownEditor() {
+    const textarea = document.querySelector('#id_description');
+    const preview = document.getElementById('markdownPreview');
+
+    if (!textarea) return;
+
+    // Обновление предварительного просмотра
+    function updatePreview() {
+        const text = textarea.value;
+        if (!text.trim()) {
+            preview.innerHTML = '<p class="text-muted">Предварительный просмотр появится здесь...</p>';
+            return;
+        }
+        
+        // Простая конвертация Markdown в HTML (базовые элементы)
+        let html = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^- (.+)$/gm, '<li>$1</li>')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        
+        // Оборачиваем в параграфы
+        if (!html.includes('<p>')) {
+            html = '<p>' + html + '</p>';
+        }
+        
+        // Обрабатываем списки
+        html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
+        
+        preview.innerHTML = html;
+    }
+
+    textarea.addEventListener('input', updatePreview);
+    
+    // Инициализация
+    updatePreview();
+}
+
+function insertMarkdown(before, after) {
+    const textarea = document.querySelector('#id_description');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    
+    const newText = before + selectedText + after;
+    
+    textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+    
+    // Устанавливаем курсор
+    const newCursorPos = start + before.length + selectedText.length;
+    textarea.setSelectionRange(newCursorPos, newCursorPos);
+    textarea.focus();
+    
+    // Обновляем предварительный просмотр
+    textarea.dispatchEvent(new Event('input'));
+}
+
+// Функция для быстрого выбора всех найденных тегов
+function selectAllVisible() {
+    const visibleCheckboxes = document.querySelectorAll('.tag-option:not(.hidden) input[type="checkbox"]');
+    visibleCheckboxes.forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+    updateSelectedTags();
+}
+
+// Функция для быстрой очистки всех выбранных тегов
+function clearAllTags() {
+    const checkboxes = document.querySelectorAll('.tag-option input[type="checkbox"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+    updateSelectedTags();
+}
+
+// Функция раскрытия/скрытия всех групп тегов
+function toggleAllTagGroups(expand = true) {
+    const groups = document.querySelectorAll('.tag-group-content');
+    groups.forEach(group => {
+        const header = group.previousElementSibling;
+        const icon = header.querySelector('.toggle-icon');
+        
+        if (expand) {
+            group.classList.remove('collapsed');
+            group.style.maxHeight = group.scrollHeight + 'px';
+            header.classList.remove('collapsed');
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            group.style.maxHeight = '0px';
+            header.classList.add('collapsed');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-right');
+            setTimeout(() => {
+                group.classList.add('collapsed');
+            }, 300);
+        }
+    });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация автозаполнения названий
+    setupProductNameAutocomplete();
+    
+    // Загрузка структуры тегов
+    completeTagsLoading();
+    
+    // Инициализация загрузки фото
+    setupPhotoUpload();
+    
+    // Инициализация редактора Markdown
+    setupMarkdownEditor();
+    
+    // Добавляем кнопки быстрого управления тегами
+    setTimeout(() => {
+        const controlsHtml = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="selectAllVisible()">
+                        <i class="fas fa-check-double"></i> Выбрать найденные
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearAllTags()">
+                        <i class="fas fa-times"></i> Очистить все
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-info" onclick="toggleAllTagGroups(true)">
+                        <i class="fas fa-expand-alt"></i> Раскрыть все
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="toggleAllTagGroups(false)">
+                        <i class="fas fa-compress-alt"></i> Скрыть все
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        const tagsSelection = document.querySelector('.tags-selection');
+        if (tagsSelection) {
+            tagsSelection.insertAdjacentHTML('beforebegin', controlsHtml);
+        }
+    }, 1000);
+    
+    // Добавляем быстрые клавиши для поиска
+    document.getElementById('tagSearch').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            filterTags();
+        }
+    });
+    
+    // Очистка поиска при фокусе на поле
+    document.getElementById('tagSearch').addEventListener('focus', function() {
+        this.select();
+    });
+    
+    // Показываем подсказку по автозаполнению
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    if (nameInput) {
+        nameInput.setAttribute('placeholder', 'Начните вводить название товара...');
+    }
+});
+</script>
+{% endblock %}

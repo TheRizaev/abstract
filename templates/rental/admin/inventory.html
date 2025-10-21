@@ -1,0 +1,145 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Склад - Админ панель{% endblock %}
+{% load rental_filters %}
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Склад</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="search" class="form-control" placeholder="Умный поиск: название, артикул, место (например: A5, B3)" value="{{ search_query }}">
+            </div>
+            <div class="col-md-4">
+                <select name="storage" class="form-select">
+                    <option value="">Все стойки</option>
+                    {% for storage in storages %}
+                        <option value="{{ storage.name }}" {% if storage_filter == storage.name %}selected{% endif %}>
+                            Стойка {{ storage.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Поиск</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Фото</th>
+                        <th>Название</th>
+                        <th>Артикул</th>
+                        <th>Место хранения</th>
+                        <th>Общее кол-во</th>
+                        <th>Доступно</th>
+                        <th>В аренде</th>
+                        <th>Цена/день</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>
+                            {% if product.photo %}
+                                <img src="{{ product.photo.url }}" alt="{{ product.name }}" style="width: 50px; height: 50px; object-fit: cover;" class="rounded">
+                            {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="fas fa-image text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ product.get_display_name }}</strong></td>
+                        <td><code>{{ product.article }}</code></td>
+                        <td>
+                            <span class="badge bg-info">{{ product.shelf }}</span>
+                        </td>
+                        <td>{{ product.quantity }}</td>
+                        <td>
+                            {% if product.available_quantity <= 0 %}
+                                <span class="badge bg-danger fs-6">{{ product.available_quantity }}</span>
+                            {% elif product.available_quantity <= 2 %}
+                                <span class="badge bg-warning fs-6">{{ product.available_quantity }}</span>
+                            {% else %}
+                                <span class="badge bg-success fs-6">{{ product.available_quantity }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ product.quantity|add:"-"|add:product.available_quantity }}</td>
+                        <td>{{ product.daily_price|format_price }} сум</td>
+                        <td>
+                            {% if product.available_quantity <= 0 %}
+                                <span class="badge bg-danger">Нет в наличии</span>
+                            {% elif product.available_quantity <= 2 %}
+                                <span class="badge bg-warning">Мало</span>
+                            {% else %}
+                                <span class="badge bg-success">В наличии</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'rental:product_detail' product.id %}" class="btn btn-sm btn-outline-info" title="Просмотр на сайте" target="_blank">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center">Товаров не найдено</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if products %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">{{ products|length }}</h5>
+                <p class="card-text">Товаров найдено</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ total_quantity }}</h5>
+                <p class="card-text">Общее количество</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">{{ available_quantity }}</h5>
+                <p class="card-text">Доступно</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-danger">{{ rented_quantity }}</h5>
+                <p class="card-text">В аренде</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

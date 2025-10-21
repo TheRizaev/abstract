@@ -1,0 +1,1481 @@
+{% extends 'base.html' %}
+{% load rental_filters %}
+
+{% block title %}Каталог товаров - Аренда оборудования{% endblock %}
+
+{% block content %}
+<!-- Существующие стили остаются без изменений -->
+<style>
+    :root {
+        --sidebar-width: 320px;
+    }
+
+    /* Layout with Sidebar */
+    .catalog-layout {
+        display: flex;
+        gap: 2rem;
+        margin: -2rem;
+        min-height: calc(100vh - var(--header-height));
+    }
+
+    /* Sidebar */
+    .catalog-sidebar {
+        width: var(--sidebar-width);
+        background: var(--surface-color);
+        border-right: 1px solid var(--border-color);
+        box-shadow: 2px 0 20px rgba(0,0,0,0.4);
+        height: calc(100vh - var(--header-height));
+        overflow-y: auto;
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        z-index: 999;
+        transition: transform 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+
+    .catalog-sidebar.hidden {
+        transform: translateX(-100%);
+    }
+
+    /* Main content with sidebar */
+    .main-catalog-content {
+        margin-left: var(--sidebar-width);
+        padding: 2rem;
+        width: 100%;
+        transition: margin-left 0.3s ease;
+        background: transparent;
+    }
+
+    .main-catalog-content.sidebar-closed {
+        margin-left: 0;
+    }
+
+    /* Toggle Button */
+    .sidebar-toggle-btn {
+        position: fixed;
+        top: 50%;
+        left: var(--sidebar-width);
+        transform: translateY(-50%);
+        background: linear-gradient(135deg, var(--accent-color), #2980b9);
+        border: none;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 0 50% 50% 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 2px 0 15px rgba(52, 152, 219, 0.4);
+        transition: all 0.3s ease;
+        z-index: 1000;
+        cursor: pointer;
+    }
+
+    .sidebar-toggle-btn.closed {
+        left: 0;
+    }
+
+    .sidebar-toggle-btn:hover {
+        background: linear-gradient(135deg, #2980b9, #1f5f8b);
+        width: 45px;
+        box-shadow: 2px 0 20px rgba(52, 152, 219, 0.6);
+    }
+
+    .sidebar-toggle-btn i {
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar-toggle-btn.closed i {
+        transform: rotate(180deg);
+    }
+
+    /* Sidebar Content */
+    .catalog-header {
+        padding: 2rem;
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+    }
+
+    .catalog-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .catalog-search {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--surface-color);
+    }
+
+    .catalog-search input {
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        background: var(--card-color);
+        color: var(--text-color);
+    }
+
+    .catalog-search input:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        outline: none;
+        background: var(--card-color);
+    }
+
+    /* Tag Tree */
+    .tag-tree {
+        padding: 1rem 0;
+        background: var(--surface-color);
+    }
+
+    /* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ТЕГОВ */
+    
+    /* Базовый стиль для всех элементов тегов */
+    .tag-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: var(--text-color);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+        position: relative;
+        cursor: pointer;
+        user-select: none;
+        background: var(--surface-color); /* Одинаковый фон для всех */
+    }
+
+    .tag-item:hover {
+        color: var(--blue-light);
+        border-left-color: var(--blue-light);
+        background: rgba(88, 166, 255, 0.1);
+    }
+
+    .tag-item.active {
+        color: var(--blue);
+        border-left-color: var(--blue);
+        background: rgba(88, 166, 255, 0.15);
+        font-weight: 600;
+    }
+
+    /* Контейнеры для элементов с кнопками */
+    .tag-item-container {
+        display: flex;
+        align-items: stretch;
+        position: relative;
+        background: var(--surface-color); /* Одинаковый фон */
+    }
+
+    .tag-item-link {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: var(--text-color);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-left: 3px solid transparent;
+        cursor: pointer;
+        user-select: none;
+        background: var(--surface-color); /* Одинаковый фон */
+    }
+
+    .tag-item-link:hover {
+        color: var(--blue-light);
+        border-left-color: var(--blue-light);
+        background: rgba(88, 166, 255, 0.1);
+        text-decoration: none;
+    }
+
+    .tag-item-link.active {
+        color: var(--blue);
+        border-left-color: var(--blue);
+        background: rgba(88, 166, 255, 0.15);
+        font-weight: 600;
+    }
+
+    /* Иконки для разных типов тегов */
+    .tag-icon {
+        min-width: 20px;
+        margin-right: 0.75rem;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
+    /* Главные теги - иконка папки */
+    .tag-item-link.main-tag .tag-icon {
+        color: var(--blue-light);
+    }
+
+    /* Дочерние теги - иконка бирки */
+    .tag-item.child .tag-icon,
+    .tag-item-link.child-tag .tag-icon {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
+    /* НОВЫЕ СТИЛИ ДЛЯ КНОПОК-СТРЕЛОК */
+    
+    /* Кнопки разворачивания в квадратиках */
+    .tag-toggle-btn {
+        background: var(--card-color);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0.5rem 0.75rem 0.5rem 0;
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .tag-toggle-btn:hover {
+        background: rgba(88, 166, 255, 0.1);
+        border-color: var(--blue-light);
+        color: var(--blue);
+    }
+
+    .tag-toggle-btn:active {
+        transform: scale(0.95);
+    }
+
+    .tag-toggle-btn .toggle-icon {
+        transition: transform 0.3s ease;
+        font-size: 0.75rem;
+        font-weight: 900;
+    }
+
+    .tag-toggle-btn.expanded .toggle-icon {
+        transform: rotate(90deg);
+        color: var(--blue);
+    }
+
+    .tag-toggle-btn.expanded {
+        background: rgba(88, 166, 255, 0.1);
+        border-color: var(--blue);
+        color: var(--blue);
+    }
+
+    /* Кнопки для дочерних элементов - такого же размера */
+    .child-toggle {
+        width: 32px;
+        height: 32px;
+        margin: 0.5rem 0.75rem 0.5rem 0;
+    }
+
+    .child-toggle .toggle-icon {
+        font-size: 0.75rem;
+    }
+
+    /* Дочерние контейнеры */
+    .child-container {
+        margin-left: 1.5rem;
+        background: var(--surface-color); /* Одинаковый фон */
+    }
+
+    .child-container .tag-item-link {
+        padding-left: 0.75rem;
+    }
+
+    /* Child tags */
+    .tag-item.child {
+        padding-left: 2.25rem;
+        font-size: 1rem;
+        border-left: none;
+        position: relative;
+        background: var(--surface-color); /* Одинаковый фон, убираем осветление */
+    }
+
+    .tag-item.child::before {
+        content: '';
+        position: absolute;
+        left: 1.5rem;
+        top: 50%;
+        width: 12px;
+        height: 1px;
+        background: var(--border-color);
+        transform: translateY(-50%);
+    }
+
+    .tag-item.child:hover {
+        background: rgba(88, 166, 255, 0.1); /* Такой же ховер как у родительских */
+    }
+
+    /* Стили для дочерних элементов второго уровня */
+    .tag-item.child-level-2 {
+        padding-left: 3rem;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        background: var(--surface-color); /* Одинаковый фон */
+    }
+
+    .tag-item.child-level-2::before {
+        left: 2.25rem;
+        width: 8px;
+    }
+
+    .tag-item.child-level-2:hover {
+        color: var(--blue-light);
+        background: rgba(88, 166, 255, 0.1); /* Такой же ховер */
+    }
+
+    .tag-item.child-level-2.active {
+        color: var(--blue);
+        background: rgba(88, 166, 255, 0.15);
+        font-weight: 600;
+    }
+
+    /* Tag children containers */
+    .tag-children {
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        background: var(--surface-color); /* Одинаковый фон */
+    }
+
+    .tag-children.collapsed {
+        max-height: 0;
+    }
+
+    .tag-children:not(.collapsed) {
+        max-height: 1000px;
+    }
+
+    /* Overlay for mobile */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 998;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        backdrop-filter: blur(5px);
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
+    /* НОВЫЕ СТИЛИ ДЛЯ УМНОГО ПОИСКА */
+    
+    /* Search section */
+    .search-form {
+        background: var(--card-color);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+        position: relative;
+    }
+
+    /* Умный поиск активен */
+    .search-form.smart-search-active {
+        border-color: var(--blue);
+        box-shadow: 0 4px 20px rgba(88, 166, 255, 0.3);
+    }
+
+    .search-form.smart-search-active::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        right: -1px;
+        bottom: -1px;
+        background: linear-gradient(45deg, var(--blue), var(--purple), var(--blue));
+        background-size: 200% 200%;
+        border-radius: 15px;
+        z-index: -1;
+        animation: smartSearchGlow 3s ease-in-out infinite;
+    }
+
+    @keyframes smartSearchGlow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+
+    .search-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .search-title {
+        display: flex;
+        align-items: center;
+        font-weight: 700;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .search-title.smart-active {
+        color: var(--blue);
+    }
+
+    .search-title i {
+        margin-right: 0.5rem;
+        font-size: 1.2rem;
+    }
+
+    .search-input {
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: var(--surface-color);
+        color: var(--text-color);
+        position: relative;
+    }
+
+    .search-input:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 0.2rem rgba(88, 166, 255, 0.25);
+        outline: none;
+        background: var(--surface-color);
+    }
+
+    .search-btn {
+        background: linear-gradient(45deg, var(--blue), #2980b9);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .search-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(88, 166, 255, 0.4);
+        color: white;
+        background: linear-gradient(45deg, #2980b9, #1f5f8b);
+    }
+
+    .smart-search-info {
+        background: linear-gradient(45deg, rgba(88, 166, 255, 0.1), rgba(165, 165, 255, 0.1));
+        border: 1px solid rgba(88, 166, 255, 0.3);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+        color: var(--blue-light);
+        font-size: 0.9rem;
+        display: block;
+    }
+
+    /* Results info */
+    .results-info {
+        background: rgba(88, 166, 255, 0.1);
+        border: 1px solid rgba(88, 166, 255, 0.3);
+        border-radius: 10px;
+        color: var(--blue-light);
+        padding: 1rem 1.5rem;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    /* Products grid - остается как было */
+    .products-grid {
+        display: grid;
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    /* Responsive grid */
+    @media (min-width: 576px) {
+        .products-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 768px) {
+        .products-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (min-width: 992px) {
+        .products-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .products-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    @media (min-width: 1400px) {
+        .products-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+    }
+
+    /* Product cards */
+    .product-card {
+        background: var(--card-color);
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        height: fit-content;
+        border: 1px solid var(--border-color);
+        position: relative;
+    }
+
+    .product-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(88, 166, 255, 0.05), rgba(165, 165, 255, 0.05));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .product-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+        border-color: rgba(88, 166, 255, 0.5);
+    }
+
+    .product-card:hover::before {
+        opacity: 1;
+    }
+
+    .product-image-container {
+        position: relative;
+        height: 200px;
+        overflow: hidden;
+        background: var(--surface-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 1rem;
+        transition: all 0.3s ease;
+        filter: brightness(1.1);
+    }
+
+    .product-card:hover .product-image {
+        transform: scale(1.05);
+        filter: brightness(1.2);
+    }
+
+    .no-image {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-secondary);
+        text-align: center;
+        background: var(--surface-color);
+    }
+
+    .product-status {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        backdrop-filter: blur(10px);
+        z-index: 2;
+    }
+
+    .status-available {
+        background: rgba(126, 231, 135, 0.2);
+        color: var(--green);
+        border: 1px solid rgba(126, 231, 135, 0.4);
+    }
+
+    .status-low {
+        background: rgba(240, 213, 92, 0.2);
+        color: var(--yellow);
+        border: 1px solid rgba(240, 213, 92, 0.4);
+    }
+
+    .status-out {
+        background: rgba(248, 81, 73, 0.2);
+        color: var(--red);
+        border: 1px solid rgba(248, 81, 73, 0.4);
+    }
+
+    .product-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+        color: white;
+        padding: 1rem;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        z-index: 2;
+    }
+
+    .product-card:hover .product-overlay {
+        transform: translateY(0);
+    }
+
+    .product-content {
+        padding: 1.5rem;
+        background: var(--card-color);
+        position: relative;
+        z-index: 2;
+    }
+
+    .product-title {
+        color: var(--text-color);
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        line-height: 1.3;
+        height: 2.6rem;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .product-article {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+        font-family: 'Courier New', monospace;
+        background: var(--surface-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    .product-price {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--blue);
+        margin-bottom: 1rem;
+    }
+
+    .product-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: auto;
+    }
+
+    .add-to-cart-btn {
+        flex: 1;
+        background: linear-gradient(45deg, var(--blue), #2980b9);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        padding: 0.7rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);
+    }
+
+    .add-to-cart-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(88, 166, 255, 0.4);
+        background: linear-gradient(45deg, #2980b9, #1f5f8b);
+    }
+
+    .add-to-cart-btn:disabled {
+        background: var(--surface-color);
+        color: var(--text-secondary);
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .add-to-cart-btn:disabled:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-secondary);
+        grid-column: 1 / -1;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 2rem;
+        color: var(--text-secondary);
+        opacity: 0.5;
+    }
+
+    .empty-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-color);
+        margin-bottom: 1rem;
+    }
+
+    .empty-description {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+        color: var(--text-secondary);
+    }
+
+    .reset-btn {
+        background: linear-gradient(45deg, var(--blue), #2980b9);
+        border: none;
+        border-radius: 25px;
+        color: white;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);
+    }
+
+    .reset-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(88, 166, 255, 0.4);
+        color: white;
+        background: linear-gradient(45deg, #2980b9, #1f5f8b);
+    }
+
+    /* Loading states */
+    .btn-loading {
+        position: relative;
+        color: transparent !important;
+    }
+
+    .btn-loading::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        top: 50%;
+        left: 50%;
+        margin-left: -8px;
+        margin-top: -8px;
+        border: 2px solid transparent;
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        color: white;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Mobile Styles */
+    @media (max-width: 768px) {
+        .catalog-layout {
+            flex-direction: column;
+        }
+
+        .catalog-sidebar {
+            z-index: 1001;
+            transform: translateX(-100%);
+        }
+
+        .catalog-sidebar.mobile-open {
+            transform: translateX(0);
+        }
+
+        .sidebar-toggle-btn {
+            z-index: 1002;
+            left: 0;
+        }
+
+        .main-catalog-content {
+            margin-left: 0;
+            padding: 1rem;
+        }
+
+        .search-form {
+            padding: 1rem;
+        }
+
+        .search-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .search-input {
+            font-size: 0.9rem;
+            padding: 0.6rem 0.8rem;
+        }
+
+        .search-btn {
+            padding: 0.6rem 1.5rem;
+        }
+
+        .product-image-container {
+            height: 180px;
+        }
+
+        .product-content {
+            padding: 1rem;
+        }
+
+        .product-title {
+            font-size: 0.9rem;
+        }
+
+        .product-price {
+            font-size: 1.1rem;
+        }
+
+        .products-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .smart-search-info {
+            font-size: 0.8rem;
+            padding: 0.75rem;
+        }
+
+        /* Мобильные стили для кнопок тегов */
+        .tag-toggle-btn {
+            width: 28px;
+            height: 28px;
+            margin: 0.375rem 0.5rem 0.375rem 0;
+        }
+
+        .child-toggle {
+            width: 28px;
+            height: 28px;
+        }
+    }
+</style>
+
+<div class="catalog-layout">
+    <!-- Toggle Button -->
+    <button class="sidebar-toggle-btn" id="sidebarToggle" onclick="toggleSidebar()">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <!-- Overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
+
+    <!-- Catalog Sidebar -->
+    <nav class="catalog-sidebar" id="catalogSidebar">
+        <!-- Catalog Header -->
+        <div class="catalog-header">
+            <div>
+                <h2 class="catalog-title mb-1">
+                    Каталог товаров
+                </h2>
+                <p class="mb-0 opacity-75">Выберите категорию</p>
+            </div>
+        </div>
+
+        <!-- Tag Tree -->
+        <div class="tag-tree">
+            <a href="{% url 'rental:product_list' %}" 
+               class="tag-item {% if not request.GET.tag %}active{% endif %}">
+                <i class="fas fa-th-large tag-icon"></i>
+                Все товары
+            </a>
+            
+            <!-- Root Tags -->
+            {% if root_tags %}
+                {% for tag in root_tags %}
+                    <div class="tag-group">
+                        <!-- Родительская категория с управляемым разворачиванием -->
+                        <div class="tag-item-container">
+                            <!-- Кликабельная область названия -->
+                            <a href="?tag={{ tag.id }}" 
+                               class="tag-item-link main-tag {% if request.GET.tag == tag.id|stringformat:'s' %}active{% endif %}">
+                                <i class="fas fa-folder tag-icon"></i>
+                                {{ tag.get_display_name }}
+                            </a>
+                            
+                            <!-- Стрелка для разворачивания (только если есть дочерние) -->
+                            {% with children=tag.get_children %}
+                                {% if children %}
+                                    <button class="tag-toggle-btn" 
+                                            data-tag-id="{{ tag.id }}" 
+                                            onclick="toggleTagGroup('{{ tag.id }}', event)">
+                                        <i class="fas fa-chevron-right toggle-icon" id="icon-{{ tag.id }}"></i>
+                                    </button>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        
+                        <!-- Дочерние категории (изначально скрыты) -->
+                        {% with children=tag.get_children %}
+                            {% if children %}
+                                <div class="tag-children collapsed" id="children-{{ tag.id }}">
+                                    {% for child in children %}
+                                        <div class="tag-item-container child-container">
+                                            <!-- Дочерний тег первого уровня -->
+                                            <a href="?tag={{ child.id }}" 
+                                               class="tag-item-link child-tag {% if request.GET.tag == child.id|stringformat:'s' %}active{% endif %}">
+                                                <i class="fas fa-tag tag-icon"></i>
+                                                {{ child.get_display_name }}
+                                            </a>
+                                            
+                                            <!-- Стрелка для дочерних второго уровня -->
+                                            {% with grandchildren=child.get_children %}
+                                                {% if grandchildren %}
+                                                    <button class="tag-toggle-btn child-toggle" 
+                                                            data-tag-id="child-{{ child.id }}" 
+                                                            onclick="toggleTagGroup('child-{{ child.id }}', event)">
+                                                        <i class="fas fa-chevron-right toggle-icon" id="icon-child-{{ child.id }}"></i>
+                                                    </button>
+                                                {% endif %}
+                                            {% endwith %}
+                                        </div>
+                                        
+                                        <!-- Дочерние элементы второго уровня -->
+                                        {% with grandchildren=child.get_children %}
+                                            {% if grandchildren %}
+                                                <div class="tag-children collapsed" id="children-child-{{ child.id }}">
+                                                    {% for grandchild in grandchildren %}
+                                                        <a href="?tag={{ grandchild.id }}" 
+                                                           class="tag-item child child-level-2 {% if request.GET.tag == grandchild.id|stringformat:'s' %}active{% endif %}">
+                                                            <i class="fas fa-tag tag-icon"></i>
+                                                            {{ grandchild.get_display_name }}
+                                                        </a>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-catalog-content" id="mainContent">
+        <!-- Unified Smart Search Form -->
+        <div class="search-form" id="searchForm">
+            <div class="search-header">
+                <h3 class="search-title" id="searchTitle">
+                    <i class="fas fa-brain"></i>
+                    Умный поиск
+                </h3>
+            </div>
+            
+            <form method="get" class="row g-3 align-items-end" id="searchFormElement">
+                <div class="col-md-8">
+                    <input type="text" name="search" 
+                           class="form-control search-input" 
+                           placeholder="Опишите что ищете: 'освещение', 'камера', 'посуда'..." 
+                           value="{{ search_query }}" id="searchInput">
+                    {% if request.GET.tag %}
+                        <input type="hidden" name="tag" value="{{ request.GET.tag }}">
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn search-btn w-100" id="searchButton">
+                        <i class="fas fa-brain me-2" id="searchButtonIcon"></i>
+                        Найти
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Smart search info -->
+            <div class="smart-search-info" id="smartSearchInfo">
+                <i class="fas fa-lightbulb me-2"></i>
+                <strong>Умный поиск всегда активен!</strong> Описывайте что ищете своими словами. 
+                Например: "сиденье" найдет стулья и кресла, "парта" найдет столы, "яркий" найдет лампы и светильники.
+            </div>
+        </div>
+
+        <!-- Search Results Info -->
+        {% if search_query %}
+        <div class="results-info">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-info-circle me-3 fs-5"></i>
+                <div>
+                    <strong>Результаты умного поиска по запросу:</strong> "{{ search_query }}"
+                    <div class="small mt-1">Найдено товаров: {{ products_count }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Current Filter Info -->
+        {% if selected_tag_obj %}
+        <div class="results-info">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-filter me-3 fs-5"></i>
+                    <div>
+                        <strong>Фильтр по категории:</strong> {{ selected_tag_obj.get_display_name }}
+                        <div class="small mt-1">Найдено товаров: {{ products_count }}</div>
+                    </div>
+                </div>
+                <a href="{% url 'rental:product_list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-times me-1"></i>Очистить фильтр
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Products Grid -->
+        <div class="products-grid">
+            {% for product in products %}
+            <div class="product-card" data-product-id="{{ product.id }}" onclick="window.location.href='{% url 'rental:product_detail' product.id %}'">
+                <!-- Product Image -->
+                <div class="product-image-container">
+                    {% if product.photo %}
+                        <img src="{{ product.photo.url }}" class="product-image" alt="{{ product.name }}">
+                    {% else %}
+                        <div class="no-image">
+                            <div>
+                                <i class="fas fa-camera fa-2x mb-2 d-block"></i>
+                                <small>Фото скоро появится</small>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Status Badge -->
+                    <div class="product-status {% if product.get_availability_status == 'out' %}status-out{% elif product.get_availability_status == 'low' %}status-low{% else %}status-available{% endif %}">
+                        {% if product.get_availability_status == 'out' %}
+                            <i class="fas fa-times-circle me-1"></i>Осталось: 0
+                        {% elif product.get_availability_status == 'low' %}
+                            <i class="fas fa-exclamation-triangle me-1"></i>Осталось: {{ product.available_quantity }}
+                        {% else %}
+                            <i class="fas fa-check-circle me-1"></i>В наличии: {{ product.available_quantity }}
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Quick Info Overlay -->
+                    <div class="product-overlay">
+                        <div class="small">
+                            <strong><i class="fas fa-barcode me-1"></i>{{ product.article }}</strong>
+                        </div>
+                        <div class="small mt-1 opacity-75">
+                            <i class="fas fa-map-marker-alt me-1"></i>{{ product.shelf }}
+                        </div>
+                        {% if product.tags.exists %}
+                            <div class="small mt-1 opacity-75">
+                                <i class="fas fa-tags me-1"></i>
+                                {% for tag in product.tags.all %}
+                                    {{ tag.get_display_name }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Product Content -->
+                <div class="product-content">
+                    <h3 class="product-title">{{ product.get_display_name }}</h3>
+                    <div class="product-article">
+                        <i class="fas fa-hashtag me-1"></i>{{ product.article }}
+                    </div>
+                    <div class="product-price">
+                        {{ product.daily_price|format_price }} сум<small class="text-muted">/день</small>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="product-actions">
+                        {% if product.available_quantity > 0 %}
+                            <form method="post" action="{% url 'rental:add_to_cart' product.id %}" 
+                                  class="add-to-cart-form flex-fill" onclick="event.stopPropagation();">
+                                {% csrf_token %}
+                                <input type="hidden" name="quantity" value="1">
+                                <button type="submit" class="add-to-cart-btn">
+                                    <i class="fas fa-cart-plus me-1"></i>
+                                    Добавить в корзину
+                                </button>
+                            </form>
+                        {% else %}
+                            <button type="button" class="add-to-cart-btn" disabled>
+                                <i class="fas fa-ban me-1"></i>
+                                Товар недоступен
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <!-- Empty State -->
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3 class="empty-title">Товары не найдены</h3>
+                <p class="empty-description">
+                    {% if search_type == 'smart' or search_type == 'fallback' %}
+                        К сожалению, умный поиск не нашел товаров по вашему запросу. 
+                        Попробуйте переформулировать запрос или использовать другие ключевые слова.
+                    {% else %}
+                        К сожалению, товары не найдены. 
+                        Попробуйте изменить параметры поиска или выберите другую категорию.
+                    {% endif %}
+                </p>
+                <a href="{% url 'rental:product_list' %}" class="reset-btn">
+                    <i class="fas fa-refresh me-2"></i>Показать все товары
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let sidebarOpen = true;
+let expandedTags = new Set();
+let useSmartSearch = true;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Existing initialization code...
+    const savedSidebarState = localStorage.getItem('sidebarOpen');
+    if (savedSidebarState !== null) {
+        sidebarOpen = JSON.parse(savedSidebarState);
+    } else {
+        sidebarOpen = window.innerWidth > 768;
+    }
+
+    const savedExpandedTags = localStorage.getItem('expandedTags');
+    if (savedExpandedTags) {
+        try {
+            expandedTags = new Set(JSON.parse(savedExpandedTags));
+            expandedTags.forEach(tagId => {
+                restoreTagState(tagId);
+            });
+        } catch (e) {
+            console.warn('Error parsing saved expanded tags:', e);
+            expandedTags = new Set();
+        }
+    }
+
+    // Автоматически разворачиваем группы для активного тега
+    expandParentGroupsForActiveTag();
+    
+    applySidebarStateInstant();
+    setupAjaxForms();
+});
+
+// Sidebar functions
+function saveSidebarState() {
+    try {
+        localStorage.setItem('sidebarOpen', JSON.stringify(sidebarOpen));
+    } catch (e) {
+        console.warn('Error saving sidebar state:', e);
+    }
+}
+
+function applySidebarStateInstant() {
+    const sidebar = document.getElementById('catalogSidebar');
+    const mainContent = document.getElementById('mainContent');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    sidebar.style.transition = 'none';
+    mainContent.style.transition = 'none';
+    toggleBtn.style.transition = 'none';
+    
+    if (window.innerWidth > 768) {
+        if (sidebarOpen) {
+            sidebar.classList.remove('hidden');
+            mainContent.classList.remove('sidebar-closed');
+            toggleBtn.classList.remove('closed');
+            toggleBtn.querySelector('i').className = 'fas fa-chevron-left';
+        } else {
+            sidebar.classList.add('hidden');
+            mainContent.classList.add('sidebar-closed');
+            toggleBtn.classList.add('closed');
+            toggleBtn.querySelector('i').className = 'fas fa-chevron-right';
+        }
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('active');
+    } else {
+        sidebar.classList.add('hidden');
+        mainContent.classList.add('sidebar-closed');
+        toggleBtn.classList.add('closed');
+        toggleBtn.querySelector('i').className = 'fas fa-chevron-right';
+        overlay.classList.remove('active');
+        sidebar.classList.remove('mobile-open');
+        sidebarOpen = false;
+    }
+    
+    setTimeout(() => {
+        sidebar.style.transition = '';
+        mainContent.style.transition = '';
+        toggleBtn.style.transition = '';
+    }, 50);
+}
+
+function saveTagState() {
+    try {
+        localStorage.setItem('expandedTags', JSON.stringify([...expandedTags]));
+    } catch (e) {
+        console.warn('Error saving expanded tags:', e);
+    }
+}
+
+function restoreTagState(tagId) {
+    const childrenContainer = document.getElementById(`children-${tagId}`);
+    const toggleBtn = document.querySelector(`[data-tag-id="${tagId}"]`);
+    const icon = document.getElementById(`icon-${tagId}`);
+    
+    if (childrenContainer && toggleBtn && icon) {
+        childrenContainer.classList.remove('collapsed');
+        toggleBtn.classList.add('expanded');
+        icon.style.transform = 'rotate(90deg)';
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('catalogSidebar');
+    const mainContent = document.getElementById('mainContent');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    sidebarOpen = !sidebarOpen;
+    
+    if (window.innerWidth > 768) {
+        if (sidebarOpen) {
+            sidebar.classList.remove('hidden');
+            mainContent.classList.remove('sidebar-closed');
+            toggleBtn.classList.remove('closed');
+            toggleBtn.querySelector('i').className = 'fas fa-chevron-left';
+        } else {
+            sidebar.classList.add('hidden');
+            mainContent.classList.add('sidebar-closed');
+            toggleBtn.classList.add('closed');
+            toggleBtn.querySelector('i').className = 'fas fa-chevron-right';
+        }
+    } else {
+        if (sidebarOpen) {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('active');
+        } else {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+    }
+    
+    saveSidebarState();
+}
+
+function closeSidebarMobile() {
+    if (window.innerWidth <= 768) {
+        sidebarOpen = false;
+        document.getElementById('catalogSidebar').classList.remove('mobile-open');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        saveSidebarState();
+    }
+}
+
+// Функция для переключения групп тегов
+function toggleTagGroup(groupId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const childrenContainer = document.getElementById(`children-${groupId}`);
+    const toggleBtn = document.querySelector(`[data-tag-id="${groupId}"]`);
+    const icon = document.getElementById(`icon-${groupId}`);
+    
+    if (!childrenContainer || !toggleBtn || !icon) {
+        console.warn(`Elements not found for group ${groupId}`);
+        return;
+    }
+    
+    const isCollapsed = childrenContainer.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        // Разворачиваем
+        childrenContainer.classList.remove('collapsed');
+        toggleBtn.classList.add('expanded');
+        icon.style.transform = 'rotate(90deg)';
+        
+        // Сохраняем состояние
+        expandedTags.add(groupId.toString());
+    } else {
+        // Сворачиваем
+        childrenContainer.classList.add('collapsed');
+        toggleBtn.classList.remove('expanded');
+        icon.style.transform = 'rotate(0deg)';
+        
+        // Удаляем из сохраненного состояния
+        expandedTags.delete(groupId.toString());
+    }
+    
+    saveTagState();
+}
+
+// Функция для автоматического разворачивания родительских групп при активном дочернем элементе
+function expandParentGroupsForActiveTag() {
+    const activeTag = document.querySelector('.tag-item.active, .tag-item-link.active');
+    if (!activeTag) return;
+    
+    // Находим все родительские контейнеры
+    let element = activeTag;
+    while (element) {
+        element = element.closest('.tag-children');
+        if (element) {
+            const groupId = element.id.replace('children-', '');
+            expandedTags.add(groupId);
+            restoreTagState(groupId);
+            element = element.parentElement;
+        }
+    }
+    
+    saveTagState();
+}
+
+window.addEventListener('resize', function() {
+    const wasDesktop = window.innerWidth > 768;
+    
+    setTimeout(() => {
+        const isDesktop = window.innerWidth > 768;
+        
+        if (wasDesktop !== isDesktop) {
+            applySidebarStateInstant();
+        }
+    }, 100);
+});
+
+function setupAjaxForms() {
+    document.querySelectorAll('.add-to-cart-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalHTML = submitButton.innerHTML;
+            
+            submitButton.disabled = true;
+            submitButton.classList.add('btn-loading');
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    submitButton.innerHTML = '<i class="fas fa-check me-1"></i>Добавлено!';
+                    submitButton.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+                    
+                    showMessage('Товар успешно добавлен в корзину!', 'success');
+                    updateCartCounter();
+                    
+                    setTimeout(() => {
+                        submitButton.innerHTML = originalHTML;
+                        submitButton.style.background = '';
+                        submitButton.disabled = false;
+                        submitButton.classList.remove('btn-loading');
+                    }, 2000);
+                } else {
+                    throw new Error('Ошибка при добавлении товара');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                submitButton.innerHTML = '<i class="fas fa-times me-1"></i>Ошибка';
+                submitButton.style.background = 'linear-gradient(45deg, #dc3545, #c82333)';
+                
+                showMessage('Ошибка при добавлении товара в корзину', 'error');
+                
+                setTimeout(() => {
+                    submitButton.innerHTML = originalHTML;
+                    submitButton.style.background = '';
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('btn-loading');
+                }, 2000);
+            });
+        });
+    });
+}
+
+function updateCartCounter() {
+    // Placeholder - implement based on your cart API
+    console.log('Update cart counter');
+}
+
+function showMessage(message, type = 'success') {
+    const messageEl = document.createElement('div');
+    const alertClass = type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'danger');
+    const iconClass = type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle');
+    
+    messageEl.className = `alert alert-${alertClass} alert-dismissible fade show position-fixed`;
+    messageEl.style.cssText = 'top: 100px; right: 20px; z-index: 9999; min-width: 300px; animation: slideInRight 0.3s ease;';
+    messageEl.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${iconClass} me-2"></i>
+            <span>${message}</span>
+            <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(messageEl);
+    
+    setTimeout(() => {
+        if (messageEl.parentNode) {
+            messageEl.style.animation = 'slideOutRight 0.3s ease forwards';
+            setTimeout(() => messageEl.remove(), 300);
+        }
+    }, 5000);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    
+    @keyframes slideOutRight {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(100%); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

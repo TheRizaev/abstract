@@ -1,0 +1,499 @@
+{% extends 'rental/admin/base_admin.html' %}
+{% load rental_filters %}
+{% block title %}Управление товарами - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Управление товарами</h1>
+    <a href="{% url 'add_product' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Добавить товар
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="search" class="form-control" placeholder="Поиск по названию, артикулу или описанию" value="{{ search_query }}">
+            </div>
+            <div class="col-md-2">
+                <select name="sort" class="form-select" onchange="this.form.submit()">
+                    <option value="date_desc" {% if sort_by == 'date_desc' %}selected{% endif %}>Новые сначала</option>
+                    <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Старые сначала</option>
+                    <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>По названию А-Я</option>
+                    <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>По названию Я-А</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check form-switch d-flex align-items-center h-100">
+                    <input class="form-check-input" type="checkbox" name="group_by_category" value="true" 
+                           {% if group_by_category %}checked{% endif %} onchange="this.form.submit()">
+                    <label class="form-check-label ms-2">
+                        Группировать по категориям
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Поиск</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if group_by_category %}
+            <!-- Отображение с группировкой по категориям -->
+            {% for category_name, category_products in products_by_category.items %}
+            <div class="category-group mb-4">
+                <div class="category-header d-flex justify-content-between align-items-center p-3 bg-light rounded cursor-pointer" 
+                     onclick="toggleCategory('category-{{ forloop.counter }}')">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chevron-down category-toggle" id="toggle-category-{{ forloop.counter }}"></i>
+                        <i class="fas fa-tag text-primary me-2"></i>
+                        {{ category_name }}
+                    </h5>
+                    <span class="badge bg-primary">{{ category_products|length }} товаров</span>
+                </div>
+                
+                <div class="category-content" id="category-{{ forloop.counter }}">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Фото</th>
+                                    <th>Название</th>
+                                    <th>Артикул</th>
+                                    <th>Количество</th>
+                                    <th>Доступно</th>
+                                    <th>Цена</th>
+                                    <th>Место</th>
+                                    <th>Дата добавления</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in category_products %}
+                                <tr>
+                                    <td>
+                                        {% if product.photo %}
+                                            <img src="{{ product.photo.url }}" alt="{{ product.name }}" style="width: 50px; height: 50px; object-fit: cover;" class="rounded">
+                                        {% else %}
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                <i class="fas fa-image text-muted"></i>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ product.get_display_name }}</strong>
+                                        {% if product.tags.exists %}
+                                            <div class="mt-1">
+                                                {% for tag in product.tags.all %}
+                                                    <span class="badge badge-sm bg-secondary">{{ tag.get_display_name }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td><code>{{ product.article }}</code></td>
+                                    <td>{{ product.quantity }}</td>
+                                    <td>
+                                        {% if product.available_quantity <= 0 %}
+                                            <span class="badge bg-danger">{{ product.available_quantity }}</span>
+                                        {% elif product.available_quantity <= 5 %}
+                                            <span class="badge bg-warning">{{ product.available_quantity }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success">{{ product.available_quantity }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ product.daily_price|format_price }} сум</td>
+                                    <td><span class="badge bg-info">{{ product.shelf }}</span></td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ product.created_at|date:"d.m.Y H:i" }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'rental:product_detail' product.id %}" class="btn btn-sm btn-outline-info" title="Просмотр на сайте" target="_blank">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                            <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-outline-danger" title="Удалить товар">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-4">
+                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Товаров не найдено</h5>
+                <p class="text-muted">Попробуйте изменить параметры поиска</p>
+            </div>
+            {% endfor %}
+        {% else %}
+            <!-- Обычное отображение без группировки -->
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Фото</th>
+                            <th>Название</th>
+                            <th>Артикул</th>
+                            <th>Количество</th>
+                            <th>Доступно</th>
+                            <th>Цена</th>
+                            <th>Место</th>
+                            <th>Дата добавления</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>
+                                {% if product.photo %}
+                                    <img src="{{ product.photo.url }}" alt="{{ product.name }}" style="width: 50px; height: 50px; object-fit: cover;" class="rounded">
+                                {% else %}
+                                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="fas fa-image text-muted"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ product.get_display_name }}</strong>
+                                {% if product.tags.exists %}
+                                    <div class="mt-1">
+                                        {% for tag in product.tags.all %}
+                                            <span class="badge badge-sm bg-secondary">{{ tag.get_display_name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td><code>{{ product.article }}</code></td>
+                            <td>{{ product.quantity }}</td>
+                            <td>
+                                {% if product.available_quantity <= 0 %}
+                                    <span class="badge bg-danger">{{ product.available_quantity }}</span>
+                                {% elif product.available_quantity <= 5 %}
+                                    <span class="badge bg-warning">{{ product.available_quantity }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ product.available_quantity }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ product.daily_price|format_price }} сум</td>
+                            <td><span class="badge bg-info">{{ product.shelf }}</span></td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ product.created_at|date:"d.m.Y H:i" }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'rental:product_detail' product.id %}" class="btn btn-sm btn-outline-info" title="Просмотр на сайте" target="_blank">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                    <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-outline-danger" title="Удалить товар">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <i class="fas fa-box-open fa-2x text-muted mb-3"></i>
+                                <div>Товаров не найдено</div>
+                                <small class="text-muted">Попробуйте изменить параметры поиска</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Статистика -->
+{% if products or products_by_category %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">
+                    {% if group_by_category %}
+                        {{ products_by_category.values|length }}
+                    {% else %}
+                        {{ products.count }}
+                    {% endif %}
+                </h5>
+                <p class="card-text">Товаров найдено</p>
+            </div>
+        </div>
+    </div>
+    {% if group_by_category %}
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">{{ products_by_category.keys|length }}</h5>
+                <p class="card-text">Категорий</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.category-header {
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    border: 1px solid #dee2e6;
+}
+
+.category-header:hover {
+    background-color: #e9ecef !important;
+}
+
+.category-toggle {
+    transition: transform 0.3s ease;
+    margin-right: 0.5rem;
+    width: 1rem;
+}
+
+.category-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.category-content {
+    margin-top: 1rem;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+.badge-sm {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Анимация для раскрытия/скрытия категорий */
+.category-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.category-content.collapsed {
+    max-height: 0;
+    margin-top: 0;
+    border: none;
+}
+
+/* Улучшенная таблица */
+.table td {
+    vertical-align: middle;
+}
+
+/* Стили для переключателя группировки */
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Стили для сортировки */
+.form-select:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+</style>
+
+<script>
+// Функция для переключения видимости категорий
+function toggleCategory(categoryId) {
+    const content = document.getElementById(categoryId);
+    const toggle = document.getElementById('toggle-' + categoryId);
+    
+    if (content.classList.contains('collapsed')) {
+        // Раскрываем
+        content.classList.remove('collapsed');
+        content.style.maxHeight = content.scrollHeight + 'px';
+        toggle.classList.remove('collapsed');
+    } else {
+        // Скрываем
+        content.style.maxHeight = '0px';
+        toggle.classList.add('collapsed');
+        setTimeout(() => {
+            content.classList.add('collapsed');
+        }, 300);
+    }
+}
+
+// Функция для быстрого раскрытия/скрытия всех категорий
+function toggleAllCategories(expand = true) {
+    const categories = document.querySelectorAll('.category-content');
+    const toggles = document.querySelectorAll('.category-toggle');
+    
+    categories.forEach((content, index) => {
+        const toggle = toggles[index];
+        
+        if (expand) {
+            content.classList.remove('collapsed');
+            content.style.maxHeight = content.scrollHeight + 'px';
+            toggle.classList.remove('collapsed');
+        } else {
+            content.style.maxHeight = '0px';
+            toggle.classList.add('collapsed');
+            setTimeout(() => {
+                content.classList.add('collapsed');
+            }, 300);
+        }
+    });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // По умолчанию все категории раскрыты
+    const categories = document.querySelectorAll('.category-content');
+    categories.forEach(content => {
+        content.style.maxHeight = content.scrollHeight + 'px';
+    });
+    
+    // Добавляем кнопки управления категориями если включена группировка
+    {% if group_by_category and products_by_category %}
+    const firstCard = document.querySelector('.card .card-body');
+    if (firstCard) {
+        const controlsHtml = `
+            <div class="d-flex justify-content-end mb-3">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="toggleAllCategories(true)">
+                        <i class="fas fa-expand-alt"></i> Раскрыть все
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="toggleAllCategories(false)">
+                        <i class="fas fa-compress-alt"></i> Скрыть все
+                    </button>
+                </div>
+            </div>
+        `;
+        firstCard.insertAdjacentHTML('beforeend', controlsHtml);
+    }
+    {% endif %}
+    
+    // Добавляем обработчик для сохранения состояния формы поиска
+    const form = document.querySelector('form[method="get"]');
+    if (form) {
+        // Сохраняем текущие параметры при отправке формы
+        form.addEventListener('submit', function() {
+            // Можно добавить сохранение состояния в localStorage
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData);
+            localStorage.setItem('productSearchParams', params.toString());
+        });
+        
+        // Восстанавливаем фокус на поле поиска если оно было активно
+        const searchInput = form.querySelector('input[name="search"]');
+        if (searchInput && searchInput.value) {
+            searchInput.focus();
+            searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+        }
+    }
+    
+    // Добавляем подсказки для элементов управления
+    const sortSelect = document.querySelector('select[name="sort"]');
+    if (sortSelect) {
+        sortSelect.title = 'Выберите порядок сортировки товаров';
+    }
+    
+    const groupCheckbox = document.querySelector('input[name="group_by_category"]');
+    if (groupCheckbox) {
+        groupCheckbox.title = 'Группировать товары по их основным категориям';
+    }
+    
+    // Добавляем счетчики для обычного режима
+    {% if not group_by_category %}
+    const tableBody = document.querySelector('tbody');
+    if (tableBody && tableBody.children.length > 0) {
+        // Добавляем информацию о сортировке в заголовок таблицы
+        const sortInfo = document.createElement('div');
+        sortInfo.className = 'alert alert-info alert-sm mt-3';
+        sortInfo.innerHTML = `
+            <i class="fas fa-info-circle"></i>
+            <strong>Сортировка:</strong> 
+            {% if sort_by == 'date_desc' %}новые товары показаны первыми
+            {% elif sort_by == 'date_asc' %}старые товары показаны первыми  
+            {% elif sort_by == 'name_asc' %}товары отсортированы по названию (А-Я)
+            {% elif sort_by == 'name_desc' %}товары отсортированы по названию (Я-А)
+            {% endif %}
+        `;
+        
+        const tableContainer = document.querySelector('.table-responsive');
+        if (tableContainer) {
+            tableContainer.parentNode.insertBefore(sortInfo, tableContainer);
+        }
+    }
+    {% endif %}
+});
+
+// Функция для быстрого поиска по таблице (клиентская фильтрация)
+function quickFilter(searchTerm) {
+    const rows = document.querySelectorAll('tbody tr');
+    const term = searchTerm.toLowerCase();
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(term)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Добавляем быстрый поиск если товаров много
+{% if products.count > 20 or products_by_category %}
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        // Добавляем кнопку очистки поиска
+        const clearButton = document.createElement('button');
+        clearButton.type = 'button';
+        clearButton.className = 'btn btn-outline-secondary';
+        clearButton.innerHTML = '<i class="fas fa-times"></i>';
+        clearButton.title = 'Очистить поиск';
+        clearButton.onclick = function() {
+            searchInput.value = '';
+            searchInput.focus();
+            // Отправляем форму для сброса результатов
+            searchInput.closest('form').submit();
+        };
+        
+        // Вставляем кнопку после поля поиска
+        const searchCol = searchInput.closest('.col-md-6');
+        if (searchCol && searchInput.value) {
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'input-group';
+            searchInput.parentNode.insertBefore(inputGroup, searchInput);
+            inputGroup.appendChild(searchInput);
+            inputGroup.appendChild(clearButton);
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

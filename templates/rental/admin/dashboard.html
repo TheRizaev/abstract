@@ -1,0 +1,135 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Дашборд - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Дашборд</h1>
+</div>
+
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="card-title text-uppercase text-muted mb-0">Всего товаров</h5>
+                        <span class="h2 font-weight-bold mb-0">{{ total_products }}</span>
+                    </div>
+                    <div class="col-auto">
+                        <div class="icon icon-shape bg-gradient-red text-white rounded-circle shadow">
+                            <i class="fas fa-box fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card-2 h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="card-title text-uppercase text-muted mb-0">Ожидают подтверждения</h5>
+                        <span class="h2 font-weight-bold mb-0">{{ pending_orders }}</span>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card-3 h-100">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="card-title text-uppercase text-muted mb-0">Подтверждены</h5>
+                        <span class="h2 font-weight-bold mb-0">{{ confirmed_orders }}</span>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card h-100" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white;">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="card-title text-uppercase mb-0" style="color: rgba(255,255,255,0.8);">Отклонены</h5>
+                        <span class="h2 font-weight-bold mb-0">{{ rejected_orders }}</span>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Последние заявки</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Название проекта</th>
+                                <th>Телефон</th>
+                                <th>Сумма</th>
+                                <th>Статус</th>
+                                <th>Дата</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.project_name }}</td>
+                                <td>{{ order.phone1 }}</td>
+                                <td>{{ order.total_amount }} сум</td>
+                                <td>
+                                    {% if order.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Ожидает</span>
+                                    {% elif order.status == 'confirmed' %}
+                                        <span class="badge bg-info">Подтверждена</span>
+                                    {% elif order.status == 'completed' %}
+                                        <span class="badge bg-success">Завершена</span>
+                                    {% elif order.status == 'rejected' %}
+                                        <span class="badge bg-danger">Отклонена</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-sm btn-outline-primary">
+                                        Подробнее
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">Заявок пока нет</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

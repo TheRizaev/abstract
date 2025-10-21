@@ -1,0 +1,59 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Удалить полку - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Удаление полки</h1>
+    <a href="{% url 'storage_management' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Назад
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h4>Подтверждение удаления</h4>
+                <p class="lead">Вы действительно хотите удалить полку <strong>"{{ shelf }}"</strong>?</p>
+                
+                {% if products_count > 0 %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-ban"></i>
+                        <strong>Нельзя удалить полку!</strong><br>
+                        На ней находится {{ products_count }} товаров. Сначала переместите все товары на другие полки.
+                    </div>
+                    <a href="{% url 'storage_management' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Вернуться назад
+                    </a>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i>
+                        Это действие нельзя отменить!
+                    </div>
+                    
+                    <div class="mb-3">
+                        <p><strong>Информация о полке:</strong></p>
+                        <ul class="list-unstyled">
+                            <li><strong>Стойка:</strong> {{ shelf.storage.name }}</li>
+                            <li><strong>Номер:</strong> {{ shelf.number }}</li>
+                            <li><strong>Товаров:</strong> {{ products_count }}</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger me-2">
+                            <i class="fas fa-trash"></i> Да, удалить
+                        </button>
+                    </form>
+                    <a href="{% url 'storage_management' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

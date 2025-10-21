@@ -1,0 +1,402 @@
+{% extends 'rental/admin/base_admin.html' %}
+{% load rental_filters %}
+
+{% block title %}Управление тегами - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Управление тегами</h1>
+    <div>
+        <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#sortModal">
+            <i class="fas fa-sort"></i> Сортировка
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTagModal">
+            <i class="fas fa-plus"></i> Добавить тег
+        </button>
+    </div>
+</div>
+
+<!-- Фильтры сортировки -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">Сортировка тегов</label>
+                <select name="sort" class="form-select" onchange="this.form.submit()">
+                    <option value="order" {% if sort_filter == 'order' %}selected{% endif %}>По установленному порядку</option>
+                    <option value="alphabetical" {% if sort_filter == 'alphabetical' %}selected{% endif %}>По алфавиту</option>
+                    <option value="creation_date" {% if sort_filter == 'creation_date' %}selected{% endif %}>По дате создания</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        Выбранный порядок сортировки влияет на отображение тегов в каталоге товаров
+                    </small>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Структура тегов</h5>
+            </div>
+            <div class="card-body">
+                {% if tag_tree %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Уровень</th>
+                                    <th>Порядок</th>
+                                    <th>Товаров</th>
+                                    <th>Подтегов</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in tag_tree %}
+                                <tr>
+                                    <td>
+                                        <div style="margin-left: {{ item.level|mul:20 }}px;">
+                                            {% if item.level > 0 %}
+                                                <i class="fas fa-level-up-alt text-muted me-1" style="transform: rotate(90deg);"></i>
+                                            {% endif %}
+                                            <strong>{{ item.tag.get_display_name }}</strong>
+                                            {% if item.tag.parent %}
+                                                <small class="text-muted">({{ item.tag.get_full_path }})</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if item.level == 0 %}
+                                            <span class="badge bg-primary">Корневой</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ item.level }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ item.tag.order }}</span>
+                                    </td>
+                                    <td>
+                                        {% if item.products_count > 0 %}
+                                            <span class="badge bg-success">{{ item.products_count }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.children_count > 0 %}
+                                            <span class="badge bg-info">{{ item.children_count }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editTag({{ item.tag.id }}, '{{ item.tag.name }}', {{ item.tag.parent.id|default:'null' }}, {{ item.tag.order }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-success" onclick="addChildTag({{ item.tag.id }}, '{{ item.tag.get_display_name }}')">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                            {% if item.products_count == 0 and item.children_count == 0 %}
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTag({{ item.tag.id }}, '{{ item.tag.get_display_name }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Тегов пока нет</h5>
+                        <p class="text-muted">Создайте первый тег для начала работы</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Визуализация структуры</h5>
+            </div>
+            <div class="card-body">
+                <div id="tagTree" style="max-height: 500px; overflow-y: auto;"></div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5>Статистика</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ tags.count }}</h4>
+                        <small class="text-muted">Всего тегов</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">{{ root_tags.count }}</h4>
+                        <small class="text-muted">Корневых тегов</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления тега -->
+<div class="modal fade" id="addTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить тег</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="tagName" class="form-label">Название тега</label>
+                        <input type="text" name="name" class="form-control" id="tagName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parentTag" class="form-label">Родительский тег</label>
+                        <select name="parent" class="form-select" id="parentTag">
+                            <option value="">Корневой тег (без родителя)</option>
+                            {% for tag in tags %}
+                                <option value="{{ tag.id }}">{{ tag.get_full_path }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tagOrder" class="form-label">Порядок сортировки</label>
+                        <input type="number" name="order" class="form-control" id="tagOrder" value="0" min="0">
+                        <small class="form-text text-muted">Чем меньше число, тем выше в списке будет отображаться тег</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="add_tag" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования тега -->
+<div class="modal fade" id="editTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать тег</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="tag_id" id="editTagId">
+                    <div class="mb-3">
+                        <label for="editTagName" class="form-label">Название тега</label>
+                        <input type="text" name="name" class="form-control" id="editTagName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editParentTag" class="form-label">Родительский тег</label>
+                        <select name="parent" class="form-select" id="editParentTag">
+                            <option value="">Корневой тег (без родителя)</option>
+                            {% for tag in tags %}
+                                <option value="{{ tag.id }}">{{ tag.get_full_path }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTagOrder" class="form-label">Порядок сортировки</label>
+                        <input type="number" name="order" class="form-control" id="editTagOrder" value="0" min="0">
+                        <small class="form-text text-muted">Чем меньше число, тем выше в списке будет отображаться тег</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="edit_tag" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно настройки сортировки -->
+<div class="modal fade" id="sortModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Настройка сортировки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Информация о сортировке:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>По установленному порядку</strong> - использует поле "Порядок сортировки" для каждого тега</li>
+                        <li><strong>По алфавиту</strong> - сортирует теги по названию от А до Я</li>
+                        <li><strong>По дате создания</strong> - сортирует по времени добавления тега</li>
+                    </ul>
+                </div>
+                <p>Выбранный порядок сортировки будет применен как в админ панели, так и в каталоге товаров для пользователей.</p>
+                <p>Чтобы настроить пользовательский порядок, выберите "По установленному порядку" и укажите нужные значения в поле "Порядок сортировки" при редактировании тегов.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Форма удаления тега (скрытая) -->
+<form method="post" id="deleteTagForm" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="tag_id" id="deleteTagId">
+    <input type="hidden" name="delete_tag" value="1">
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Функции для работы с тегами
+function editTag(tagId, tagName, parentId, order) {
+    document.getElementById('editTagId').value = tagId;
+    document.getElementById('editTagName').value = tagName;
+    document.getElementById('editParentTag').value = parentId || '';
+    document.getElementById('editTagOrder').value = order || 0;
+    
+    // Убираем текущий тег из списка возможных родителей
+    const parentSelect = document.getElementById('editParentTag');
+    Array.from(parentSelect.options).forEach(option => {
+        option.style.display = option.value == tagId ? 'none' : 'block';
+    });
+    
+    new bootstrap.Modal(document.getElementById('editTagModal')).show();
+}
+
+function addChildTag(parentId, parentName) {
+    document.getElementById('tagName').value = '';
+    document.getElementById('parentTag').value = parentId;
+    document.getElementById('tagOrder').value = 0;
+    
+    const modal = new bootstrap.Modal(document.getElementById('addTagModal'));
+    modal.show();
+    
+    // Фокус на поле ввода
+    modal._element.addEventListener('shown.bs.modal', function() {
+        document.getElementById('tagName').focus();
+    });
+}
+
+function deleteTag(tagId, tagName) {
+    if (confirm(`Вы уверены, что хотите удалить тег "${tagName}"?`)) {
+        document.getElementById('deleteTagId').value = tagId;
+        document.getElementById('deleteTagForm').submit();
+    }
+}
+
+// Визуализация дерева тегов с возможностью сворачивания
+function loadTagTree() {
+    fetch('{% url "tag_structure_api" %}')
+        .then(response => response.json())
+        .then(data => {
+            const treeContainer = document.getElementById('tagTree');
+            treeContainer.innerHTML = buildTreeHTML(data.tree);
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки дерева тегов:', error);
+        });
+}
+
+function buildTreeHTML(tags, level = 0) {
+    let html = '<ul class="list-unstyled">';
+    
+    tags.forEach(tag => {
+        const hasChildren = tag.children.length > 0;
+        const toggleId = `toggle-${tag.id}`;
+        
+        html += `
+            <li style="margin-left: ${level * 15}px; margin-bottom: 5px;">
+                <div class="d-flex align-items-center">
+                    ${level > 0 ? '<i class="fas fa-level-up-alt text-muted me-1" style="transform: rotate(90deg); font-size: 10px;"></i>' : ''}
+                    ${hasChildren ? `<button type="button" class="btn btn-sm btn-link p-0 me-1 toggle-btn" onclick="toggleTagTree('${toggleId}')" style="text-decoration: none;">
+                        <i class="fas fa-chevron-right" id="icon-${toggleId}"></i>
+                    </button>` : '<span style="width: 20px; display: inline-block;"></span>'}
+                    <i class="fas fa-tag text-primary me-1"></i>
+                    <span class="fw-bold">${tag.name}</span>
+                    ${tag.products_count > 0 ? `<span class="badge bg-success ms-2">${tag.products_count}</span>` : ''}
+                    <small class="text-muted ms-2">(порядок: ${tag.order})</small>
+                </div>
+                ${hasChildren ? `<div id="${toggleId}" class="tag-children" style="display: none; margin-top: 5px;">
+                    ${buildTreeHTML(tag.children, level + 1)}
+                </div>` : ''}
+            </li>
+        `;
+    });
+    
+    html += '</ul>';
+    return html;
+}
+
+// Функция сворачивания/разворачивания дерева тегов
+function toggleTagTree(toggleId) {
+    const element = document.getElementById(toggleId);
+    const icon = document.getElementById(`icon-${toggleId}`);
+    
+    if (element.style.display === 'none') {
+        element.style.display = 'block';
+        icon.className = 'fas fa-chevron-down';
+    } else {
+        element.style.display = 'none';
+        icon.className = 'fas fa-chevron-right';
+    }
+}
+
+// Загружаем дерево при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    loadTagTree();
+});
+
+// Добавляем стили для дерева тегов
+const style = document.createElement('style');
+style.textContent = `
+    .tag-children {
+        border-left: 2px solid #dee2e6;
+        margin-left: 10px;
+        padding-left: 10px;
+    }
+    
+    .toggle-btn {
+        width: 20px;
+        height: 20px;
+        border: none !important;
+        color: #6c757d !important;
+    }
+    
+    .toggle-btn:hover {
+        color: #495057 !important;
+        background: transparent !important;
+    }
+    
+    .toggle-btn:focus {
+        box-shadow: none !important;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

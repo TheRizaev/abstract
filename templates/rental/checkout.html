@@ -1,0 +1,719 @@
+{% extends 'base.html' %}
+{% load rental_filters %}
+
+{% block title %}Оформление заявки - Аренда оборудования{% endblock %}
+
+{% block content %}
+<h1>Оформление заявки</h1>
+
+{% if form.errors %}
+    <div class="alert alert-danger">
+        <h5>Ошибки в форме:</h5>
+        {{ form.errors }}
+    </div>
+{% endif %}
+
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        <h5>Общие ошибки:</h5>
+        {{ form.non_field_errors }}
+    </div>
+{% endif %}
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Контактная информация</h5>
+                <form method="post" id="checkoutForm">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="{{ form.contact_person.id_for_label }}" class="form-label">Контактное лицо</label>
+                            {{ form.contact_person }}
+                            {% if form.contact_person.errors %}
+                                <div class="text-danger">{{ form.contact_person.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.phone1.id_for_label }}" class="form-label">Основной телефон</label>
+                            {{ form.phone1 }}
+                            {% if form.phone1.errors %}
+                                <div class="text-danger">{{ form.phone1.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.phone2.id_for_label }}" class="form-label optional-field">Дополнительный телефон</label>
+                            {{ form.phone2 }}
+                            {% if form.phone2.errors %}
+                                <div class="text-danger">{{ form.phone2.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Новые поля -->
+                        <div class="col-md-6">
+                            <label for="{{ form.production_name.id_for_label }}" class="form-label optional-field">Название продакшена</label>
+                            {{ form.production_name }}
+                            {% if form.production_name.errors %}
+                                <div class="text-danger">{{ form.production_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.project_name.id_for_label }}" class="form-label optional-field">Название проекта</label>
+                            {{ form.project_name }}
+                            {% if form.project_name.errors %}
+                                <div class="text-danger">{{ form.project_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.rental_start.id_for_label }}" class="form-label">Дата начала аренды</label>
+                            {{ form.rental_start }}
+                            {% if form.rental_start.errors %}
+                                <div class="text-danger">{{ form.rental_start.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.rental_end.id_for_label }}" class="form-label">Дата окончания аренды</label>
+                            {{ form.rental_end }}
+                            {% if form.rental_end.errors %}
+                                <div class="text-danger">{{ form.rental_end.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info" id="rentalDaysInfo" style="display: none;">
+                                <i class="fas fa-calendar-alt"></i> 
+                                Период аренды: <strong id="rentalDaysCount">0</strong> дней
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="{{ form.comment.id_for_label }}" class="form-label optional-field">Комментарий</label>
+                            {{ form.comment }}
+                            {% if form.comment.errors %}
+                                <div class="text-danger">{{ form.comment.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Поле скидочного кода -->
+                        <div class="col-md-6">
+                            <label for="{{ form.discount_code.id_for_label }}" class="form-label optional-field">Код скидки</label>
+                            <div class="input-group">
+                                {{ form.discount_code }}
+                                <button type="button" class="btn btn-outline-secondary" id="checkDiscountBtn" onclick="checkDiscountCode()">
+                                    <i class="fas fa-check"></i> Проверить
+                                </button>
+                            </div>
+                            {% if form.discount_code.errors %}
+                                <div class="text-danger">{{ form.discount_code.errors }}</div>
+                            {% endif %}
+                            <div id="discountResult" class="mt-2"></div>
+                        </div>
+                        <div class="col-md-6"></div>
+                        
+                        <div style="display: none;">
+                            {{ form.deposit_amount }}
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-check"></i> Отправить заявку
+                        </button>
+                        <a href="{% url 'rental:cart' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Вернуться в корзину
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Ваш заказ</h5>
+                
+                <!-- Сохраняем данные о товарах для JavaScript -->
+                <div id="cartData" style="display: none;">
+                    {% for item in cart_items %}
+                    <div class="cart-item-data" 
+                         data-product-id="{{ item.product.id }}"
+                         data-product-name="{{ item.product.name }}"
+                         data-product-article="{{ item.product.article }}"
+                         data-daily-price="{{ item.product.daily_price }}"
+                         data-quantity="{{ item.quantity }}">
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div id="orderSummary">
+                    {% for item in cart_items %}
+                        <div class="mb-3 p-3 border rounded cart-item" data-product-id="{{ item.product.id }}">
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong>{{ item.product.name }}</strong>
+                                <span class="text-success fw-bold item-total">{{ item.product.daily_price|format_price }} сум</span>
+                            </div>
+                            <small class="text-muted">
+                                Арт. {{ item.product.article }}<br>
+                                <span class="item-calculation">{{ item.product.daily_price|format_price }} сум/день × {{ item.quantity }} шт.</span>
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-3">
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>Сумма за день:</strong>
+                        <span class="h5 text-muted" id="dailyTotal">{{ total|format_price }} сум</span>
+                    </div>
+                    
+                    <!-- Показываем подытог если есть скидка -->
+                    <div class="d-flex justify-content-between align-items-center mb-2" id="subtotalRow" style="display: none;">
+                        <span>Подытог за период:</span>
+                        <span class="text-muted" id="subtotalAmount">0 сум</span>
+                    </div>
+                    
+                    <!-- Показываем скидку если применена -->
+                    <div class="d-flex justify-content-between align-items-center mb-2" id="discountRow" style="display: none;">
+                        <span class="text-success">
+                            <i class="fas fa-percent me-1"></i>
+                            Скидка <span id="discountPercentDisplay">0</span>%:
+                        </span>
+                        <span class="text-success" id="discountAmountDisplay">-0 сум</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>Итого за весь период:</strong>
+                        <strong class="text-success h4" id="grandTotal">{{ total|format_price }} сум</strong>
+                    </div>
+                    <small class="text-muted d-block mt-1" id="totalCalculation">
+                        Выберите даты аренды для расчета итоговой суммы
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Дополнительные стили для checkout */
+#rentalDaysInfo {
+    background-color: #e3f2fd;
+    border-color: #1976d2;
+    color: #0d47a1;
+}
+
+.cart-item {
+    transition: all 0.3s ease;
+}
+
+.cart-item:hover {
+    background-color: #f8f9fa;
+}
+
+#grandTotal {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.form-control[type="date"] {
+    cursor: pointer;
+}
+
+.form-control[type="date"]:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Улучшенные стили для новых полей */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Выделение обязательных полей */
+.form-label::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Убираем звездочки для необязательных полей */
+.form-label.optional-field::after {
+    content: " (необязательно)";
+    color: #6c757d;
+    font-weight: normal;
+    font-style: italic;
+}
+
+/* Стили для скидочного кода */
+#discountResult .alert {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+#subtotalRow, #discountRow {
+    padding: 0.25rem 0;
+}
+
+#discountRow {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Безопасная инициализация переменных
+let cartItems = [];
+let dailyTotal = 0;
+let appliedDiscount = {
+    code: null,
+    percent: 0,
+    amount: 0
+};
+
+// Функция для форматирования цен
+function formatPrice(price) {
+    if (price == null || price == undefined) {
+        return "0";
+    }
+    
+    try {
+        let value = parseFloat(price);
+        value = Math.round(value);
+        return value.toLocaleString('ru-RU').replace(/,/g, ' ');
+    } catch (error) {
+        return String(price);
+    }
+}
+
+// Функция для проверки скидочного кода
+function checkDiscountCode() {
+    const discountInput = document.getElementById('{{ form.discount_code.id_for_label }}');
+    const discountResult = document.getElementById('discountResult');
+    const checkBtn = document.getElementById('checkDiscountBtn');
+    
+    const code = discountInput.value.trim().toUpperCase();
+    
+    if (!code) {
+        discountResult.innerHTML = '<small class="text-muted">Введите код скидки</small>';
+        return;
+    }
+    
+    // Показываем индикатор загрузки
+    checkBtn.disabled = true;
+    checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    discountResult.innerHTML = '<small class="text-info"><i class="fas fa-spinner fa-spin me-1"></i>Проверяем код...</small>';
+    
+    // Проверяем код через API
+    fetch(`/api/check-discount-code/?code=${encodeURIComponent(code)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.valid) {
+                // Код действителен
+                appliedDiscount = {
+                    code: data.code,
+                    percent: data.discount_percent,
+                    amount: 0 // будет рассчитано в calculateRentalDays
+                };
+                
+                discountResult.innerHTML = `
+                    <div class="alert alert-success py-2">
+                        <i class="fas fa-check-circle me-1"></i>
+                        <strong>Код принят!</strong> Скидка ${data.discount_percent}%
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeDiscount()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                discountInput.value = data.code;
+                discountInput.readOnly = true;
+                
+                // Пересчитываем сумму
+                calculateRentalDays();
+                
+            } else {
+                // Код недействителен
+                appliedDiscount = { code: null, percent: 0, amount: 0 };
+                discountResult.innerHTML = `
+                    <div class="alert alert-danger py-2">
+                        <i class="fas fa-times-circle me-1"></i>
+                        ${data.error || 'Неверный код скидки'}
+                    </div>
+                `;
+                calculateRentalDays();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking discount code:', error);
+            discountResult.innerHTML = `
+                <div class="alert alert-warning py-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Ошибка при проверке кода. Попробуйте позже.
+                </div>
+            `;
+        })
+        .finally(() => {
+            checkBtn.disabled = false;
+            checkBtn.innerHTML = '<i class="fas fa-check"></i> Проверить';
+        });
+}
+
+// Функция для удаления скидки
+function removeDiscount() {
+    const discountInput = document.getElementById('{{ form.discount_code.id_for_label }}');
+    const discountResult = document.getElementById('discountResult');
+    
+    appliedDiscount = { code: null, percent: 0, amount: 0 };
+    discountInput.value = '';
+    discountInput.readOnly = false;
+    discountResult.innerHTML = '';
+    
+    // Скрываем детализацию скидки
+    hideDiscountDisplay();
+    
+    // Пересчитываем сумму
+    calculateRentalDays();
+}
+
+// Инициализация данных о товарах из скрытого блока
+document.addEventListener('DOMContentLoaded', function() {
+    // Собираем данные о товарах
+    document.querySelectorAll('.cart-item-data').forEach(function(element) {
+        cartItems.push({
+            productId: element.dataset.productId,
+            productName: element.dataset.productName,
+            productArticle: element.dataset.productArticle,
+            dailyPrice: parseFloat(element.dataset.dailyPrice),
+            quantity: parseInt(element.dataset.quantity)
+        });
+    });
+    
+    // Рассчитываем общую сумму за день
+    dailyTotal = cartItems.reduce((sum, item) => sum + (item.dailyPrice * item.quantity), 0);
+    document.getElementById('dailyTotal').textContent = formatPrice(dailyTotal) + ' сум';
+    
+    // Добавляем обработчики событий на изменение дат
+    const startDateInput = document.getElementById('{{ form.rental_start.id_for_label }}');
+    const endDateInput = document.getElementById('{{ form.rental_end.id_for_label }}');
+    
+    if (startDateInput && endDateInput) {
+        startDateInput.addEventListener('change', calculateRentalDays);
+        endDateInput.addEventListener('change', calculateRentalDays);
+        
+        // Устанавливаем минимальную дату - сегодня
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.setAttribute('min', today);
+        
+        // При изменении даты начала, обновляем минимальную дату окончания
+        startDateInput.addEventListener('change', function() {
+            if (this.value) {
+                endDateInput.setAttribute('min', this.value);
+                // Если дата окончания меньше даты начала, сбрасываем её
+                if (endDateInput.value && endDateInput.value < this.value) {
+                    endDateInput.value = this.value;
+                }
+            }
+        });
+    }
+    
+    // Если даты уже выбраны (например, при возврате с ошибкой валидации), рассчитываем
+    if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
+        calculateRentalDays();
+    }
+
+    // Добавляем подсказки для новых полей
+    setupFieldTooltips();
+});
+
+function calculateRentalDays() {
+    const startDateInput = document.getElementById('{{ form.rental_start.id_for_label }}');
+    const endDateInput = document.getElementById('{{ form.rental_end.id_for_label }}');
+    
+    if (!startDateInput.value || !endDateInput.value) {
+        document.getElementById('rentalDaysInfo').style.display = 'none';
+        document.getElementById('grandTotal').textContent = formatPrice(dailyTotal) + ' сум';
+        document.getElementById('totalCalculation').textContent = 'Выберите даты аренды для расчета итоговой суммы';
+        hideDiscountDisplay();
+        updateItemsDisplay(1);
+        return;
+    }
+    
+    const startDate = new Date(startDateInput.value);
+    const endDate = new Date(endDateInput.value);
+    
+    // Рассчитываем количество дней (включая первый и последний день)
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    
+    if (daysDiff < 1) {
+        alert('Дата окончания должна быть позже или равна дате начала');
+        endDateInput.value = startDateInput.value;
+        return;
+    }
+    
+    // Показываем количество дней
+    document.getElementById('rentalDaysCount').textContent = daysDiff;
+    document.getElementById('rentalDaysInfo').style.display = 'block';
+    
+    // Рассчитываем итоговую сумму
+    const subtotal = dailyTotal * daysDiff;
+    
+    // Применяем скидку если есть
+    let discountAmount = 0;
+    let grandTotal = subtotal;
+    
+    if (appliedDiscount.code && appliedDiscount.percent > 0) {
+        discountAmount = (subtotal * appliedDiscount.percent) / 100;
+        grandTotal = subtotal - discountAmount;
+        appliedDiscount.amount = discountAmount;
+        
+        // Показываем детализацию скидки
+        showDiscountDisplay(subtotal, discountAmount);
+    } else {
+        // Скрываем детализацию скидки
+        hideDiscountDisplay();
+    }
+    
+    // Обновляем отображение
+    document.getElementById('grandTotal').textContent = formatPrice(grandTotal) + ' сум';
+    
+    let calculationText = `
+        <i class="fas fa-calculator text-primary"></i> 
+        ${formatPrice(dailyTotal)} сум/день × ${daysDiff} дней
+    `;
+    
+    if (discountAmount > 0) {
+        calculationText += ` = ${formatPrice(subtotal)} сум`;
+        calculationText += `<br><span class="text-success">Применена скидка ${appliedDiscount.percent}%</span>`;
+        calculationText += `<br><strong class="text-primary">Итого: ${formatPrice(grandTotal)} сум</strong>`;
+    } else {
+        calculationText += ` = <strong>${formatPrice(grandTotal)} сум</strong>`;
+    }
+    
+    document.getElementById('totalCalculation').innerHTML = calculationText;
+    
+    // Обновляем отображение каждого товара
+    updateItemsDisplay(daysDiff);
+    
+    // Добавляем анимацию для привлечения внимания
+    const grandTotalElement = document.getElementById('grandTotal');
+    grandTotalElement.style.transition = 'all 0.3s ease';
+    grandTotalElement.style.transform = 'scale(1.1)';
+    setTimeout(() => {
+        grandTotalElement.style.transform = 'scale(1)';
+    }, 300);
+}
+
+// Функция для показа детализации скидки
+function showDiscountDisplay(subtotal, discountAmount) {
+    const subtotalRow = document.getElementById('subtotalRow');
+    const discountRow = document.getElementById('discountRow');
+    const subtotalAmountEl = document.getElementById('subtotalAmount');
+    const discountPercentEl = document.getElementById('discountPercentDisplay');
+    const discountAmountEl = document.getElementById('discountAmountDisplay');
+    
+    if (subtotalRow && discountRow) {
+        subtotalRow.style.display = 'flex';
+        discountRow.style.display = 'flex';
+        
+        subtotalAmountEl.textContent = formatPrice(subtotal) + ' сум';
+        discountPercentEl.textContent = appliedDiscount.percent;
+        discountAmountEl.textContent = '-' + formatPrice(discountAmount) + ' сум';
+    }
+}
+
+// Функция для скрытия детализации скидки
+function hideDiscountDisplay() {
+    const subtotalRow = document.getElementById('subtotalRow');
+    const discountRow = document.getElementById('discountRow');
+    
+    if (subtotalRow && discountRow) {
+        subtotalRow.style.display = 'none';
+        discountRow.style.display = 'none';
+    }
+}
+
+function updateItemsDisplay(days) {
+    cartItems.forEach(item => {
+        const itemElement = document.querySelector(`.cart-item[data-product-id="${item.productId}"]`);
+        if (itemElement) {
+            const totalPrice = item.dailyPrice * item.quantity * days;
+            
+            itemElement.querySelector('.item-total').textContent = formatPrice(totalPrice) + ' сум';
+            
+            const calculation = itemElement.querySelector('.item-calculation');
+            if (days > 1) {
+                calculation.innerHTML = `${formatPrice(item.dailyPrice)} сум/день × ${item.quantity} шт. × ${days} дн.`;
+            } else {
+                calculation.innerHTML = `${formatPrice(item.dailyPrice)} сум/день × ${item.quantity} шт.`;
+            }
+        }
+    });
+}
+
+// Настройка подсказок для полей
+function setupFieldTooltips() {
+    const fields = [
+        {
+            id: '{{ form.production_name.id_for_label }}',
+            tooltip: 'Укажите название вашей продакшн-компании или студии (необязательно)'
+        },
+        {
+            id: '{{ form.project_name.id_for_label }}',
+            tooltip: 'Название проекта, для которого арендуется оборудование (необязательно)'
+        },
+        {
+            id: '{{ form.contact_person.id_for_label }}',
+            tooltip: 'ФИО ответственного лица'
+        },
+        {
+            id: '{{ form.phone1.id_for_label }}',
+            tooltip: 'Основной номер телефона для связи'
+        },
+        {
+            id: '{{ form.phone2.id_for_label }}',
+            tooltip: 'Дополнительный номер телефона (необязательно)'
+        }
+    ];
+
+    fields.forEach(field => {
+        const element = document.getElementById(field.id);
+        if (element) {
+            element.setAttribute('title', field.tooltip);
+        }
+    });
+}
+
+// Автоматическое форматирование телефонных номеров
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInputs = [
+        document.getElementById('{{ form.phone1.id_for_label }}'),
+        document.getElementById('{{ form.phone2.id_for_label }}')
+    ];
+
+    phoneInputs.forEach(input => {
+        if (input) {
+            // Форматирование при вводе
+            input.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, ''); // Убираем все нецифровые символы
+                let formattedValue = '';
+                
+                // Если начинается с 998, удаляем его для корректного форматирования
+                if (value.startsWith('998')) {
+                    value = value.substring(3);
+                }
+                
+                // Ограничиваем длину до 9 цифр (без кода страны)
+                if (value.length > 9) {
+                    value = value.substring(0, 9);
+                }
+                
+                // Форматируем номер
+                if (value.length > 0) {
+                    formattedValue = '+998 ';
+                    if (value.length >= 2) {
+                        formattedValue += '(' + value.substring(0, 2) + ') ';
+                        if (value.length >= 5) {
+                            formattedValue += value.substring(2, 5) + '-';
+                            if (value.length >= 7) {
+                                formattedValue += value.substring(5, 7) + '-';
+                                if (value.length >= 9) {
+                                    formattedValue += value.substring(7, 9);
+                                } else if (value.length > 7) {
+                                    formattedValue += value.substring(7);
+                                }
+                            } else if (value.length > 5) {
+                                formattedValue += value.substring(5);
+                            }
+                        } else if (value.length > 2) {
+                            formattedValue += value.substring(2);
+                        }
+                    } else {
+                        formattedValue += value;
+                    }
+                }
+                
+                // Устанавливаем отформатированное значение
+                e.target.value = formattedValue;
+            });
+            
+            // Обработка клавиш Backspace и Delete
+            input.addEventListener('keydown', function(e) {
+                const cursorPosition = e.target.selectionStart;
+                const value = e.target.value;
+                
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    // Если курсор находится на служебном символе, перемещаем его
+                    const serviceChars = ['+', '9', '8', ' ', '(', ')', '-'];
+                    const charAtCursor = value[cursorPosition - 1];
+                    
+                    if (e.key === 'Backspace' && serviceChars.includes(charAtCursor)) {
+                        e.preventDefault();
+                        // Находим предыдущую цифру и удаляем её
+                        let newValue = value.replace(/\D/g, ''); // Убираем все нецифровые
+                        if (newValue.startsWith('998')) {
+                            newValue = newValue.substring(3);
+                        }
+                        
+                        // Удаляем последнюю цифру
+                        if (newValue.length > 0) {
+                            newValue = newValue.slice(0, -1);
+                        }
+                        
+                        // Переформатируем
+                        let formattedValue = '';
+                        if (newValue.length > 0) {
+                            formattedValue = '+998 ';
+                            if (newValue.length >= 2) {
+                                formattedValue += '(' + newValue.substring(0, 2) + ') ';
+                                if (newValue.length >= 5) {
+                                    formattedValue += newValue.substring(2, 5) + '-';
+                                    if (newValue.length >= 7) {
+                                        formattedValue += newValue.substring(5, 7) + '-';
+                                        if (newValue.length >= 9) {
+                                            formattedValue += newValue.substring(7, 9);
+                                        } else if (newValue.length > 7) {
+                                            formattedValue += newValue.substring(7);
+                                        }
+                                    } else if (newValue.length > 5) {
+                                        formattedValue += newValue.substring(5);
+                                    }
+                                } else if (newValue.length > 2) {
+                                    formattedValue += newValue.substring(2);
+                                }
+                            } else {
+                                formattedValue += newValue;
+                            }
+                        }
+                        
+                        e.target.value = formattedValue;
+                        
+                        // Устанавливаем курсор в конец
+                        setTimeout(() => {
+                            e.target.setSelectionRange(formattedValue.length, formattedValue.length);
+                        }, 0);
+                    }
+                }
+            });
+            
+            // Установка курсора в конец при фокусе
+            input.addEventListener('focus', function(e) {
+                setTimeout(() => {
+                    e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+                }, 0);
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

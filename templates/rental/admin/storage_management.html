@@ -1,0 +1,312 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Управление стойками - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Управление стойками</h1>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center stat-card">
+            <div class="card-body">
+                <h3>{{ storages.count }}</h3>
+                <p class="mb-0">Стоек</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center stat-card-2">
+            <div class="card-body">
+                <h3>{{ shelves.count }}</h3>
+                <p class="mb-0">Полок</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center stat-card-3">
+            <div class="card-body">
+                <h3 id="totalProducts">0</h3>
+                <p class="mb-0">Товаров</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center stat-card-4">
+            <div class="card-body">
+                <h3 id="avgProductsPerShelf">0</h3>
+                <p class="mb-0">Ср. товаров/полка</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Добавить стойку</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ storage_form.name.label_tag }}
+                        {{ storage_form.name }}
+                    </div>
+                    <button type="submit" name="add_storage" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Добавить стойку
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Добавить полку</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ shelf_form.storage.label_tag }}
+                        {{ shelf_form.storage }}
+                    </div>
+                    <div class="mb-3">
+                        {{ shelf_form.number.label_tag }}
+                        {{ shelf_form.number }}
+                    </div>
+                    <button type="submit" name="add_shelf" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Добавить полку
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Стойки</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Количество полок</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for storage in storages %}
+                            <tr>
+                                <td><strong>{{ storage.name }}</strong></td>
+                                <td>
+                                    <span class="badge bg-info">{{ storage.shelf_set.count }}</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editStorage({{ storage.id }}, '{{ storage.name }}')" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    {% if storage.shelf_set.count == 0 %}
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteStorage({{ storage.id }}, '{{ storage.name }}')" title="Удалить">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled title="Нельзя удалить: есть полки">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">Стоек пока нет</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Полки</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Стойка</th>
+                                <th>Номер</th>
+                                <th>Товаров</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for shelf in shelves %}
+                            <tr>
+                                <td>{{ shelf.storage.name }}</td>
+                                <td>{{ shelf.number }}</td>
+                                <td>
+                                    <span class="badge bg-success product-count">{{ shelf.product_set.count }}</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editShelf({{ shelf.id }}, {{ shelf.storage.id }}, '{{ shelf.number }}')" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    {% if shelf.product_set.count == 0 %}
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteShelf({{ shelf.id }}, '{{ shelf }}')" title="Удалить">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled title="Нельзя удалить: есть товары">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">Полок пока нет</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования стойки -->
+<div class="modal fade" id="editStorageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать стойку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="storage_id" id="editStorageId">
+                    <div class="mb-3">
+                        <label for="editStorageName" class="form-label">Название стойки</label>
+                        <input type="text" name="name" class="form-control" id="editStorageName" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="edit_storage" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования полки -->
+<div class="modal fade" id="editShelfModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать полку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="shelf_id" id="editShelfId">
+                    <div class="mb-3">
+                        <label for="editShelfStorage" class="form-label">Стойка</label>
+                        <select name="storage_id" class="form-select" id="editShelfStorage" required>
+                            {% for storage in storages %}
+                                <option value="{{ storage.id }}">{{ storage.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editShelfNumber" class="form-label">Номер полки</label>
+                        <input type="text" name="number" class="form-control" id="editShelfNumber" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="edit_shelf" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Скрытые формы для удаления -->
+<form method="post" id="deleteStorageForm" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="storage_id" id="deleteStorageId">
+    <input type="hidden" name="delete_storage" value="1">
+</form>
+
+<form method="post" id="deleteShelfForm" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="shelf_id" id="deleteShelfId">
+    <input type="hidden" name="delete_shelf" value="1">
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editStorage(storageId, storageName) {
+    document.getElementById('editStorageId').value = storageId;
+    document.getElementById('editStorageName').value = storageName;
+    new bootstrap.Modal(document.getElementById('editStorageModal')).show();
+}
+
+function editShelf(shelfId, storageId, shelfNumber) {
+    document.getElementById('editShelfId').value = shelfId;
+    document.getElementById('editShelfStorage').value = storageId;
+    document.getElementById('editShelfNumber').value = shelfNumber;
+    new bootstrap.Modal(document.getElementById('editShelfModal')).show();
+}
+
+function deleteStorage(storageId, storageName) {
+    if (confirm(`Вы уверены, что хотите удалить стойку "${storageName}"?`)) {
+        document.getElementById('deleteStorageId').value = storageId;
+        document.getElementById('deleteStorageForm').submit();
+    }
+}
+
+function deleteShelf(shelfId, shelfName) {
+    if (confirm(`Вы уверены, что хотите удалить полку "${shelfName}"?`)) {
+        document.getElementById('deleteShelfId').value = shelfId;
+        document.getElementById('deleteShelfForm').submit();
+    }
+}
+
+// Подсчет статистики
+document.addEventListener('DOMContentLoaded', function() {
+    let totalProducts = 0;
+    const productCounts = document.querySelectorAll('.product-count');
+    productCounts.forEach(function(element) {
+        totalProducts += parseInt(element.textContent) || 0;
+    });
+    
+    document.getElementById('totalProducts').textContent = totalProducts;
+    
+    const shelvesCount = {{ shelves.count }};
+    const avgProducts = shelvesCount > 0 ? Math.round(totalProducts / shelvesCount * 10) / 10 : 0;
+    document.getElementById('avgProductsPerShelf').textContent = avgProducts;
+});
+</script>
+{% endblock %}

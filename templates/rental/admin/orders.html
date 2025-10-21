@@ -1,0 +1,183 @@
+{% extends 'rental/admin/base_admin.html' %}
+{% load rental_filters %}
+{% block title %}Заявки - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Заявки</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <select name="status" class="form-select">
+                    <option value="">Все статусы</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Ожидает подтверждения</option>
+                    <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Подтверждена</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Завершена</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Отклонена</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <input type="text" name="search" class="form-control" placeholder="Поиск по имени, телефону или номеру заявки" value="{{ search_query }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Поиск</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Название проекта</th>
+                        <th>Телефон</th>
+                        <th>Период аренды</th>
+                        <th>Сумма</th>
+                        <th>Статус</th>
+                        <th>Оплата</th>
+                        <th>Дата создания</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>{{ order.project_name }}</td>
+                        <td>{{ order.phone1 }}</td>
+                        <td>{{ order.rental_start|date:"d.m.Y" }} - {{ order.rental_end|date:"d.m.Y" }}</td>
+                        <td>{{ order.total_amount|format_price }} сум</td>
+                        <td>
+                            {% if order.status == 'pending' %}
+                                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                                    <i class="fas fa-clock me-1"></i>Ожидает подтверждения
+                                </span>
+                            {% elif order.status == 'confirmed' %}
+                                <span class="badge bg-info fs-6 px-3 py-2">
+                                    <i class="fas fa-check me-1"></i>Подтверждена
+                                </span>
+                            {% elif order.status == 'completed' %}
+                                <span class="badge bg-success fs-6 px-3 py-2">
+                                    <i class="fas fa-check-circle me-1"></i>Завершена
+                                </span>
+                            {% elif order.status == 'rejected' %}
+                                <span class="badge bg-danger fs-6 px-3 py-2">
+                                    <i class="fas fa-times-circle me-1"></i>Отклонена
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- ИСПРАВЛЕНО: Статус оплаты можно менять для всех заявок -->
+                            <select class="form-select form-select-sm payment-select" data-order-id="{{ order.id }}" data-original-value="{{ order.payment_status }}">
+                                <option value="unpaid" {% if order.payment_status == 'unpaid' %}selected{% endif %}>Не оплачена</option>
+                                <option value="paid" {% if order.payment_status == 'paid' %}selected{% endif %}>Оплачена</option>
+                            </select>
+                        </td>
+                        <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-sm btn-outline-primary">
+                                Подробнее
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center">Заявок не найдено</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Получаем CSRF токен
+    function getCSRFToken() {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfToken) {
+            return csrfToken.value;
+        }
+        // Если токена нет на странице, получаем из cookie
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
+            }
+        }
+        return '';
+    }
+
+    // ИСПРАВЛЕНО: Обработка изменения только статуса оплаты
+    document.querySelectorAll('.payment-select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            const orderId = this.dataset.orderId;
+            const value = this.value;
+            const originalValue = this.getAttribute('data-original-value');
+            
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', getCSRFToken());
+            formData.append('payment_status', value);
+            
+            fetch(`/superuser/orders/${orderId}/update-status/`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Показать уведомление об успехе
+                    showAlert('success', 'Статус оплаты успешно обновлен');
+                    
+                    // Обновляем оригинальное значение
+                    this.setAttribute('data-original-value', value);
+                } else {
+                    // Показать ошибку и вернуть к оригинальному значению
+                    showAlert('danger', data.error || 'Не удалось обновить статус оплаты');
+                    
+                    // Возвращаем к оригинальному значению
+                    this.value = originalValue;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('danger', 'Ошибка при обновлении статуса оплаты');
+                
+                // Возвращаем к оригинальному значению
+                this.value = originalValue;
+            });
+        });
+    });
+    
+    function showAlert(type, message) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        
+        const main = document.querySelector('main');
+        if (main) {
+            main.insertBefore(alert, main.firstChild);
+        }
+        
+        // Автоматически скрыть через 5 секунд
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}
+                

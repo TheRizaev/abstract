@@ -1,0 +1,74 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Удалить товар - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Удаление товара</h1>
+    <a href="{% url 'product_management' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Назад
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h4>Подтверждение удаления товара</h4>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        {% if product.photo %}
+                            <img src="{{ product.photo.url }}" alt="{{ product.name }}" class="img-fluid rounded shadow">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <i class="fas fa-image fa-3x text-muted"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-8 text-start">
+                        <h5>{{ product.name }}</h5>
+                        <p class="text-muted mb-1"><strong>Артикул:</strong> {{ product.article }}</p>
+                        <p class="text-muted mb-1"><strong>Количество:</strong> {{ product.quantity }} шт.</p>
+                        <p class="text-muted mb-1"><strong>Доступно:</strong> {{ product.available_quantity }} шт.</p>
+                        <p class="text-muted mb-1"><strong>Цена за день:</strong> {{ product.daily_price }} сум</p>
+                        <p class="text-muted mb-1"><strong>Место хранения:</strong> {{ product.shelf }}</p>
+                        {% if product.description %}
+                            <p class="text-muted"><strong>Описание:</strong> {{ product.description|truncatewords:20 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if active_orders > 0 %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-ban"></i>
+                        <strong>Нельзя удалить товар!</strong><br>
+                        Товар используется в {{ active_orders }} активных заявках. Дождитесь завершения всех заявок или переведите их в статус "Завершена".
+                    </div>
+                    <a href="{% url 'product_management' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Вернуться назад
+                    </a>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Внимание!</strong> Это действие нельзя отменить. Товар будет удален навсегда.
+                    </div>
+                    
+                    <p class="lead mb-4">Вы действительно хотите удалить товар <strong>"{{ product.name }}"</strong>?</p>
+                    
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger me-2">
+                            <i class="fas fa-trash"></i> Да, удалить товар
+                        </button>
+                    </form>
+                    <a href="{% url 'product_management' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

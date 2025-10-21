@@ -1,0 +1,76 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Редактировать стойку - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Редактировать стойку: {{ storage.name }}</h1>
+    <a href="{% url 'storage_management' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Назад
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">Название стойки</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger">{{ form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Сохранить изменения
+                    </button>
+                    <a href="{% url 'storage_management' %}" class="btn btn-outline-secondary">
+                        Отмена
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Информация о стойке</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Текущее название:</strong> {{ storage.name }}</p>
+                <p><strong>Количество полок:</strong> {{ storage.shelf_set.count }}</p>
+                <p><strong>Общее количество товаров:</strong> 
+                    {% for shelf in storage.shelf_set.all %}
+                        {{ shelf.product_set.count }}{% if not forloop.last %} + {% endif %}
+                    {% endfor %}
+                    {% if storage.shelf_set.all %}
+                        = {{ storage.shelf_set.all.0.product_set.count }}
+                        {% for shelf in storage.shelf_set.all %}
+                            {% if not forloop.first %}
+                                + {{ shelf.product_set.count }}
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        0
+                    {% endif %}
+                </p>
+                
+                {% if storage.shelf_set.exists %}
+                    <h6 class="mt-3">Полки в этой стойке:</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for shelf in storage.shelf_set.all %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ shelf }}
+                                <span class="badge bg-primary rounded-pill">{{ shelf.product_set.count }} товаров</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

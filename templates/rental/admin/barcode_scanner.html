@@ -1,0 +1,626 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Сканер штрих-кодов - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Сканер штрих-кодов</h1>
+    <div>
+        <button class="btn btn-outline-secondary" onclick="toggleManualInput()">
+            <i class="fas fa-keyboard"></i> Ручной ввод
+        </button>
+        <a href="{% url 'admin_create_order' %}" class="btn btn-primary">
+            <i class="fas fa-shopping-cart"></i> Перейти к корзине
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Сканер -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-camera"></i> Сканирование штрих-кода</h5>
+            </div>
+            <div class="card-body text-center">
+                <!-- Видео для сканирования -->
+                <div id="scanner-container" style="position: relative;">
+                    <video id="scanner-video" style="width: 100%; max-width: 500px; border: 2px solid #007bff; border-radius: 10px;"></video>
+                    <div id="scanner-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Обработка...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Кнопки управления -->
+                <div class="mt-3">
+                    <button id="start-scan-btn" class="btn btn-success" onclick="startScanning()">
+                        <i class="fas fa-play"></i> Начать сканирование
+                    </button>
+                    <button id="stop-scan-btn" class="btn btn-danger" onclick="stopScanning()" style="display: none;">
+                        <i class="fas fa-stop"></i> Остановить
+                    </button>
+                    <button id="switch-camera-btn" class="btn btn-secondary" onclick="switchCamera()" style="display: none;">
+                        <i class="fas fa-sync"></i> <span id="camera-label">Сменить камеру</span>
+                    </button>
+                </div>
+                
+                <!-- Индикатор камеры -->
+                <div id="camera-indicator" class="mt-2" style="display: none;">
+                    <small class="text-muted">
+                        <i class="fas fa-camera"></i> 
+                        Используется: <span id="current-camera-name">Задняя камера</span>
+                    </small>
+                </div>
+                
+                <!-- Ручной ввод -->
+                <div id="manual-input-section" class="mt-4" style="display: none;">
+                    <h6>Ручной ввод штрих-кода</h6>
+                    <div class="row justify-content-center">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" id="manual-barcode" class="form-control" placeholder="Введите штрих-код" maxlength="13" pattern="[0-9]{13}">
+                                <button class="btn btn-primary" onclick="processManualBarcode()">
+                                    <i class="fas fa-check"></i> Добавить
+                                </button>
+                            </div>
+                            <small class="text-muted">13-значный штрих-код</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Информация о последнем сканировании -->
+                <div id="last-scan-info" class="alert alert-info mt-3" style="display: none;">
+                    <i class="fas fa-barcode"></i> Последний сканированный код: <strong id="last-barcode"></strong>
+                </div>
+            </div>
+        </div>
+        
+        <!-- История сканирования -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-history"></i> История сканирования</h5>
+            </div>
+            <div class="card-body">
+                <div id="scan-history" class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Штрих-код</th>
+                                <th>Товар</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scan-history-body">
+                            <!-- История будет добавляться динамически -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Текущая корзина -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-shopping-cart"></i> Текущая корзина</h5>
+            </div>
+            <div class="card-body">
+                <div id="current-cart">
+                    <p class="text-muted text-center">Корзина пуста</p>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Всего товаров:</strong>
+                    <strong id="cart-total-items">0</strong>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-warning w-100" onclick="clearCart()">
+                        <i class="fas fa-trash"></i> Очистить корзину
+                    </button>
+                    <a href="{% url 'admin_create_order' %}" class="btn btn-success w-100 mt-2">
+                        <i class="fas fa-arrow-right"></i> Оформить заказ
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Статус подключения -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-plug"></i> Статус подключения</h5>
+            </div>
+            <div class="card-body">
+                <div id="connection-status" class="text-center">
+                    <span class="badge bg-secondary">
+                        <i class="fas fa-circle"></i> Не подключено
+                    </span>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">Сессия: <span id="session-id">-</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Загружаем QuaggaJS для сканирования штрих-кодов -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
+<style>
+/* Убираем зеркалирование для задней камеры */
+#scanner-video {
+    /* transform: scaleX(-1); - убрано для корректного сканирования */
+}
+
+.drawingBuffer {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#scan-history-body tr {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.cart-item {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+</style>
+
+<script>
+let isScanning = false;
+let currentStream = null;
+let ws = null;
+let sessionId = null;
+let currentCart = {};
+let scanHistory = [];
+
+// Генерируем уникальный ID сессии
+function generateSessionId() {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Инициализация WebSocket соединения
+function initWebSocket() {
+    sessionId = generateSessionId();
+    document.getElementById('session-id').textContent = sessionId;
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws/scanner/${sessionId}/`);
+    
+    ws.onopen = function() {
+        console.log('WebSocket подключен');
+        updateConnectionStatus('connected');
+    };
+    
+    ws.onclose = function() {
+        console.log('WebSocket отключен');
+        updateConnectionStatus('disconnected');
+        // Пытаемся переподключиться через 3 секунды
+        setTimeout(initWebSocket, 3000);
+    };
+    
+    ws.onerror = function(error) {
+        console.error('WebSocket ошибка:', error);
+        updateConnectionStatus('error');
+    };
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+    };
+}
+
+// Обновление статуса подключения
+function updateConnectionStatus(status) {
+    const statusEl = document.getElementById('connection-status');
+    switch(status) {
+        case 'connected':
+            statusEl.innerHTML = '<span class="badge bg-success"><i class="fas fa-circle"></i> Подключено</span>';
+            break;
+        case 'disconnected':
+            statusEl.innerHTML = '<span class="badge bg-danger"><i class="fas fa-circle"></i> Отключено</span>';
+            break;
+        case 'error':
+            statusEl.innerHTML = '<span class="badge bg-warning"><i class="fas fa-exclamation-circle"></i> Ошибка</span>';
+            break;
+    }
+}
+
+// Обработка сообщений WebSocket
+function handleWebSocketMessage(data) {
+    if (data.type === 'cart_update') {
+        currentCart = data.cart;
+        updateCartDisplay();
+    } else if (data.type === 'scan_result') {
+        addToScanHistory(data.barcode, data.product, data.success);
+    }
+}
+
+// Начать сканирование
+let currentCamera = 'environment'; // По умолчанию задняя камера
+
+function startScanning() {
+    const scannerContainer = document.getElementById('scanner-container');
+    
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: scannerContainer,
+            constraints: {
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
+                facingMode: currentCamera,
+                aspectRatio: { ideal: 1.7777778 }
+            }
+        },
+        locator: {
+            patchSize: "medium",
+            halfSample: true
+        },
+        numOfWorkers: navigator.hardwareConcurrency || 4,
+        decoder: {
+            readers: [
+                "ean_reader",
+                "ean_8_reader",
+                "code_128_reader",
+                "code_39_reader",
+                "upc_reader",
+                "upc_e_reader"
+            ],
+            debug: {
+                drawBoundingBox: true,
+                showFrequency: true,
+                drawScanline: true,
+                showPattern: true
+            }
+        },
+        locate: true,
+        frequency: 10
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            // Если задняя камера недоступна, пробуем фронтальную
+            if (currentCamera === 'environment') {
+                currentCamera = 'user';
+                startScanning();
+                return;
+            }
+            alert('Не удалось запустить камеру. Проверьте разрешения.');
+            return;
+        }
+        console.log("Сканер запущен с камерой:", currentCamera);
+        Quagga.start();
+        isScanning = true;
+        updateScanButtons();
+        
+        // Обновляем стиль видео в зависимости от камеры
+        const video = document.querySelector('#scanner-container video');
+        if (video) {
+            if (currentCamera === 'user') {
+                video.style.transform = 'scaleX(-1)'; // Зеркалим только фронтальную камеру
+            } else {
+                video.style.transform = 'none'; // Не зеркалим заднюю камеру
+            }
+        }
+    });
+    
+    // Обработка результата сканирования
+    Quagga.onDetected(function(result) {
+        const code = result.codeResult.code;
+        console.log('Обнаружен штрих-код:', code);
+        
+        // Показываем оверлей обработки
+        document.getElementById('scanner-overlay').style.display = 'block';
+        
+        // Отправляем штрих-код на сервер
+        processBarcode(code);
+        
+        // Скрываем оверлей через секунду
+        setTimeout(() => {
+            document.getElementById('scanner-overlay').style.display = 'none';
+        }, 1000);
+        
+        // Вибрация при успешном сканировании (если поддерживается)
+        if (navigator.vibrate) {
+            navigator.vibrate(200);
+        }
+    });
+}
+
+// Остановить сканирование
+function stopScanning() {
+    if (isScanning) {
+        Quagga.stop();
+        isScanning = false;
+        updateScanButtons();
+    }
+}
+
+// Переключить камеру
+function switchCamera() {
+    if (isScanning) {
+        stopScanning();
+        // Переключаем камеру
+        currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+        
+        // Добавляем небольшую задержку перед перезапуском
+        setTimeout(() => {
+            startScanning();
+        }, 500);
+    }
+}
+
+// Обработка штрих-кода
+function processBarcode(barcode) {
+    // Показываем последний сканированный код
+    document.getElementById('last-barcode').textContent = barcode;
+    document.getElementById('last-scan-info').style.display = 'block';
+    
+    // Отправляем на сервер через AJAX
+    fetch(`/superuser/api/barcode/add-to-cart/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            barcode: barcode,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Товар "${data.product_name}" добавлен в корзину`, 'success');
+            addToScanHistory(barcode, data.product_name, true);
+            
+            // Отправляем обновление через WebSocket
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    action: 'cart_update',
+                    cart: currentCart
+                }));
+            }
+        } else {
+            showNotification(data.error || 'Товар не найден', 'error');
+            addToScanHistory(barcode, null, false);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка при обработке штрих-кода', 'error');
+    });
+}
+
+// Ручной ввод штрих-кода
+function processManualBarcode() {
+    const input = document.getElementById('manual-barcode');
+    const barcode = input.value.trim();
+    
+    if (barcode.length !== 13 || !/^\d+$/.test(barcode)) {
+        showNotification('Штрих-код должен содержать 13 цифр', 'error');
+        return;
+    }
+    
+    processBarcode(barcode);
+    input.value = '';
+}
+
+// Добавить в историю сканирования
+function addToScanHistory(barcode, productName, success) {
+    const historyBody = document.getElementById('scan-history-body');
+    const row = document.createElement('tr');
+    const time = new Date().toLocaleTimeString();
+    
+    row.innerHTML = `
+        <td>${time}</td>
+        <td><code>${barcode}</code></td>
+        <td>${productName || '-'}</td>
+        <td>
+            ${success 
+                ? '<span class="badge bg-success">Добавлено</span>' 
+                : '<span class="badge bg-danger">Не найдено</span>'}
+        </td>
+    `;
+    
+    historyBody.insertBefore(row, historyBody.firstChild);
+    
+    // Ограничиваем историю 20 записями
+    while (historyBody.children.length > 20) {
+        historyBody.removeChild(historyBody.lastChild);
+    }
+}
+
+// Обновить отображение корзины
+function updateCartDisplay() {
+    const cartEl = document.getElementById('current-cart');
+    const totalItemsEl = document.getElementById('cart-total-items');
+    
+    const cartItems = Object.values(currentCart);
+    if (cartItems.length === 0) {
+        cartEl.innerHTML = '<p class="text-muted text-center">Корзина пуста</p>';
+        totalItemsEl.textContent = '0';
+    } else {
+        let html = '';
+        let totalItems = 0;
+        
+        cartItems.forEach(item => {
+            totalItems += item.quantity;
+            html += `
+                <div class="cart-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${item.name}</strong><br>
+                            <small class="text-muted">Кол-во: ${item.quantity}</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.product_id}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        cartEl.innerHTML = html;
+        totalItemsEl.textContent = totalItems;
+    }
+}
+
+// Удалить из корзины
+function removeFromCart(productId) {
+    fetch(`/superuser/api/barcode/remove-from-cart/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            delete currentCart[productId];
+            updateCartDisplay();
+            showNotification('Товар удален из корзины', 'success');
+        }
+    });
+}
+
+// Очистить корзину
+function clearCart() {
+    if (!confirm('Вы уверены, что хотите очистить корзину?')) return;
+    
+    fetch(`/superuser/api/barcode/clear-cart/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentCart = {};
+            updateCartDisplay();
+            showNotification('Корзина очищена', 'success');
+        }
+    });
+}
+
+// Переключить ручной ввод
+function toggleManualInput() {
+    const section = document.getElementById('manual-input-section');
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    
+    if (section.style.display === 'block') {
+        document.getElementById('manual-barcode').focus();
+    }
+}
+
+// Обновить кнопки сканера
+function updateScanButtons() {
+    document.getElementById('start-scan-btn').style.display = isScanning ? 'none' : 'inline-block';
+    document.getElementById('stop-scan-btn').style.display = isScanning ? 'inline-block' : 'none';
+    document.getElementById('switch-camera-btn').style.display = isScanning ? 'inline-block' : 'none';
+    document.getElementById('camera-indicator').style.display = isScanning ? 'block' : 'none';
+    
+    // Обновляем название текущей камеры
+    if (isScanning) {
+        const cameraName = currentCamera === 'environment' ? 'Задняя камера' : 'Фронтальная камера';
+        document.getElementById('current-camera-name').textContent = cameraName;
+    }
+}
+
+// Показать уведомление
+function showNotification(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 1055;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 3000);
+}
+
+// Получить CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализируем WebSocket
+    initWebSocket();
+    
+    // Обработка Enter в поле ручного ввода
+    document.getElementById('manual-barcode').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            processManualBarcode();
+        }
+    });
+    
+    // Загружаем текущую корзину
+    fetch(`/superuser/api/barcode/get-cart/?session_id=${sessionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentCart = data.cart;
+                updateCartDisplay();
+            }
+        });
+});
+
+// Очистка при выходе со страницы
+window.addEventListener('beforeunload', function() {
+    stopScanning();
+    if (ws) {
+        ws.close();
+    }
+});
+</script>
+{% endblock %}

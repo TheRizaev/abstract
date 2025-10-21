@@ -1,0 +1,651 @@
+
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Редактировать заявку #{{ order.id }} - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Редактировать заявку #{{ order.id }}</h1>
+    <div>
+        <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к заявке
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <i class="fas fa-info-circle"></i>
+    <strong>Редактирование заявки:</strong> Вы можете изменить данные заявки, добавить или удалить товары. 
+    Поскольку заявка в статусе "Ожидания", товары не были списаны со склада.
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Информация о заявке</h5>
+            </div>
+            <div class="card-body">
+                <form id="orderForm" method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <!-- Контактная информация -->
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-user me-2"></i>Контактная информация
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.contact_person.id_for_label }}" class="form-label">Контактное лицо</label>
+                            {{ form.contact_person }}
+                            {% if form.contact_person.errors %}
+                                <div class="text-danger">{{ form.contact_person.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.phone1.id_for_label }}" class="form-label">Основной телефон</label>
+                            {{ form.phone1 }}
+                            {% if form.phone1.errors %}
+                                <div class="text-danger">{{ form.phone1.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.phone2.id_for_label }}" class="form-label">Дополнительный телефон</label>
+                            {{ form.phone2 }}
+                            {% if form.phone2.errors %}
+                                <div class="text-danger">{{ form.phone2.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6"></div>
+                        
+                        <!-- НОВЫЕ ПОЛЯ -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-success mb-3">
+                                <i class="fas fa-project-diagram me-2"></i>Информация о проекте
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.production_name.id_for_label }}" class="form-label">
+                                Название продакшена
+                                <small class="text-muted">(необязательно)</small>
+                            </label>
+                            {{ form.production_name }}
+                            {% if form.production_name.errors %}
+                                <div class="text-danger">{{ form.production_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.project_name.id_for_label }}" class="form-label">
+                                Название проекта
+                                <small class="text-muted">(необязательно)</small>
+                            </label>
+                            {{ form.project_name }}
+                            {% if form.project_name.errors %}
+                                <div class="text-danger">{{ form.project_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- СУММА ЗАЛОГА - только для админов -->
+                        {% if form.deposit_amount %}
+                        <div class="col-md-6">
+                            <label for="{{ form.deposit_amount.id_for_label }}" class="form-label">
+                                Сумма залога (сум)
+                            </label>
+                            <div class="input-group">
+                                {{ form.deposit_amount }}
+                            </div>
+                            {% if form.deposit_amount.errors %}
+                                <div class="text-danger">{{ form.deposit_amount.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Залог может быть установлен только администратором
+                            </small>
+                        </div>
+                        <div class="col-md-6"></div>
+                        {% endif %}
+                        
+                        <!-- Код скидки -->
+                        <div class="col-md-6">
+                            <label for="{{ form.discount_code.id_for_label }}" class="form-label">
+                                Код скидки
+                                <small class="text-muted">(необязательно)</small>
+                            </label>
+                            <div class="input-group">
+                                {{ form.discount_code }}
+                                <button type="button" class="btn btn-outline-secondary" id="checkDiscountBtn" onclick="checkDiscountCode()">
+                                    <i class="fas fa-check"></i> Проверить
+                                </button>
+                            </div>
+                            {% if form.discount_code.errors %}
+                                <div class="text-danger">{{ form.discount_code.errors }}</div>
+                            {% endif %}
+                            <div id="discountResult" class="mt-2"></div>
+                        </div>
+                        <div class="col-md-6"></div>
+                        
+                        <!-- Период аренды -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-info mb-3">
+                                <i class="fas fa-calendar me-2"></i>Период аренды
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.rental_start.id_for_label }}" class="form-label">Начало аренды</label>
+                            {{ form.rental_start }}
+                            {% if form.rental_start.errors %}
+                                <div class="text-danger">{{ form.rental_start.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.rental_end.id_for_label }}" class="form-label">Конец аренды</label>
+                            {{ form.rental_end }}
+                            {% if form.rental_end.errors %}
+                                <div class="text-danger">{{ form.rental_end.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Комментарий -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-secondary mb-3">
+                                <i class="fas fa-comment me-2"></i>Дополнительная информация
+                            </h6>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="{{ form.comment.id_for_label }}" class="form-label">Комментарий</label>
+                            {{ form.comment }}
+                            {% if form.comment.errors %}
+                                <div class="text-danger">{{ form.comment.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <input type="hidden" name="cart_data" id="cartData">
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Товары в заявке</h5>
+            </div>
+            <div class="card-body">
+                <div id="cartItems"></div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Стоимость аренды:</strong>
+                    <strong id="totalAmount">{{ order.total_amount|default:0 }} сум</strong>
+                </div>
+                
+                <!-- Информация о залоге -->
+                {% if form.deposit_amount %}
+                <div class="mt-3 p-3 bg-warning bg-opacity-10 border border-warning rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-shield-alt text-warning me-1"></i>
+                            <strong>Залог:</strong>
+                        </div>
+                        <span id="depositDisplay">{{ order.deposit_amount|default:0 }} сум</span>
+                    </div>
+                    <small class="text-muted d-block mt-1">
+                        Сумма залога устанавливается администратором
+                    </small>
+                </div>
+                {% endif %}
+                
+                <button type="button" class="btn btn-primary w-100 mt-3" onclick="submitOrder()" id="submitBtn">
+                    <i class="fas fa-save"></i> Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Управление товарами</h5>
+            </div>
+            <div class="card-body">
+                <!-- Быстрое добавление по артикулу -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="quickAddArticle" class="form-label fw-bold">
+                            <i class="fas fa-barcode"></i> Быстрое добавление по артикулу
+                        </label>
+                        <div class="input-group">
+                            <input type="text" id="productSearch" class="form-control" placeholder="Поиск по названию или артикулу...">
+                    </div>
+                </div>
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Артикул</th>
+                                <th>Доступно</th>
+                                <th>Цена/день</th>
+                                <th>Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTable">
+                            {% for product in products %}
+                            <tr data-product-id="{{ product.id }}" data-product-name="{{ product.name }}" 
+                                data-product-price="{{ product.daily_price }}" data-available="{{ product.available_quantity }}"
+                                data-product-article="{{ product.article }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if product.photo %}
+                                            <img src="{{ product.photo.url }}" alt="{{ product.name }}" style="width: 40px; height: 40px; object-fit: cover;" class="rounded me-2">
+                                        {% endif %}
+                                        <strong>{{ product.name }}</strong>
+                                    </div>
+                                </td>
+                                <td><code>{{ product.article }}</code></td>
+                                <td><span class="badge bg-success available-qty">{{ product.available_quantity }}</span></td>
+                                <td>{{ product.daily_price }} сум</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <input type="number" class="form-control form-control-sm me-2" style="width: 70px;" value="1" min="1" max="{{ product.available_quantity }}" id="qty-{{ product.id }}">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addToCart({{ product.id }})">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Функция для форматирования цены
+function formatPrice(price) {
+    return Math.round(price).toLocaleString('ru-RU').replace(/,/g, '.');
+}
+
+// Загружаем текущие товары из заявки
+let cart = [];
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Преобразуем данные из шаблона в правильный формат
+    const currentItems = {{ current_items|safe }};
+    cart = currentItems.map(item => ({
+        product_id: item.product_id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+    }));
+    updateCartDisplay();
+    updateAvailableQuantities();
+    updateDepositDisplay();
+});
+
+function addToCart(productId) {
+    const row = document.querySelector(`tr[data-product-id="${productId}"]`);
+    const productName = row.dataset.productName;
+    const productPrice = parseFloat(row.dataset.productPrice);
+    const quantity = parseInt(document.getElementById(`qty-${productId}`).value);
+    
+    // Получаем реальное доступное количество с учетом товаров в корзине
+    const originalAvailable = parseInt(row.dataset.available);
+    const existingItem = cart.find(item => item.product_id === productId);
+    const inCart = existingItem ? existingItem.quantity : 0;
+    const actualAvailable = originalAvailable + inCart; // При редактировании товары еще не списались
+    
+    if (quantity > actualAvailable - inCart) {
+        alert('Недостаточно товара на складе');
+        return;
+    }
+    
+    // Проверяем, есть ли уже этот товар в корзине
+    if (existingItem) {
+        if (existingItem.quantity + quantity > actualAvailable) {
+            alert('Недостаточно товара на складе');
+            return;
+        }
+        existingItem.quantity += quantity;
+    } else {
+        cart.push({
+            product_id: productId,
+            name: productName,
+            price: productPrice,
+            quantity: quantity
+        });
+    }
+    
+    updateCartDisplay();
+    updateAvailableQuantities();
+    updateDepositDisplay();
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.product_id !== productId);
+    updateCartDisplay();
+    updateAvailableQuantities();
+    updateDepositDisplay();
+}
+
+// Новая функция для изменения количества в корзине
+function changeCartQuantity(productId, delta) {
+    const item = cart.find(item => item.product_id === productId);
+    if (!item) return;
+    
+    const row = document.querySelector(`tr[data-product-id="${productId}"]`);
+    const originalAvailable = parseInt(row.dataset.available);
+    
+    const newQuantity = item.quantity + delta;
+    
+    if (newQuantity <= 0) {
+        removeFromCart(productId);
+        return;
+    }
+    
+    // При редактировании заявки товары еще не списались, поэтому доступное количество = original + current_in_cart
+    const currentItemsInOrder = {{ current_items|safe }};
+    const originalInOrder = currentItemsInOrder.find(orderItem => orderItem.product_id === productId);
+    const originalQuantityInOrder = originalInOrder ? originalInOrder.quantity : 0;
+    
+    const actualAvailable = originalAvailable + originalQuantityInOrder;
+    
+    if (newQuantity > actualAvailable) {
+        alert('Недостаточно товара на складе');
+        return;
+    }
+    
+    item.quantity = newQuantity;
+    updateCartDisplay();
+    updateAvailableQuantities();
+    updateDepositDisplay();
+}
+
+function updateCartDisplay() {
+    const cartItems = document.getElementById('cartItems');
+    const totalAmount = document.getElementById('totalAmount');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (cart.length === 0) {
+        cartItems.innerHTML = '<p class="text-muted">Корзина пуста</p>';
+        totalAmount.textContent = '0 сум';
+        submitBtn.disabled = true;
+        return;
+    }
+    
+    let html = '';
+    let subtotal = 0;
+    
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+        
+        html += `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                <div>
+                    <strong>${item.name}</strong><br>
+                    <small>${item.quantity} x ${formatPrice(item.price)} сум</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="btn-group btn-group-sm me-2" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="changeCartQuantity(${item.product_id}, -1)">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="changeCartQuantity(${item.product_id}, 1)">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="text-end">
+                        <strong>${formatPrice(itemTotal)} сум</strong><br>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${item.product_id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // Применяем скидку если есть
+    let discountAmount = 0;
+    let finalTotal = subtotal;
+    
+    if (appliedDiscount.code && appliedDiscount.percent > 0) {
+        discountAmount = (subtotal * appliedDiscount.percent) / 100;
+        finalTotal = subtotal - discountAmount;
+        appliedDiscount.amount = discountAmount;
+        
+        html += `
+            <hr>
+            <div class="d-flex justify-content-between text-muted">
+                <span>Подытог:</span>
+                <span>${formatPrice(subtotal)} сум</span>
+            </div>
+            <div class="d-flex justify-content-between text-success">
+                <span>Скидка ${appliedDiscount.percent}%:</span>
+                <span>-${formatPrice(discountAmount)} сум</span>
+            </div>
+        `;
+    }
+    
+    cartItems.innerHTML = html;
+    totalAmount.textContent = `${formatPrice(finalTotal)} сум`;
+    submitBtn.disabled = false;
+    
+    // Обновляем скрытое поле с данными корзины
+    document.getElementById('cartData').value = JSON.stringify(cart);
+}
+
+// Обновление отображения залога
+function updateDepositDisplay() {
+    const depositInput = document.getElementById('{{ form.deposit_amount.id_for_label }}');
+    const depositDisplay = document.getElementById('depositDisplay');
+    const totalWithDeposit = document.getElementById('totalWithDeposit');
+    
+    if (!depositInput || !depositDisplay || !totalWithDeposit) return;
+    
+    const depositAmount = parseFloat(depositInput.value) || 0;
+    let orderTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Применяем скидку к общей сумме заказа
+    if (appliedDiscount.code && appliedDiscount.percent > 0) {
+        const discountAmount = (orderTotal * appliedDiscount.percent) / 100;
+        orderTotal = orderTotal - discountAmount;
+    }
+    
+    depositDisplay.textContent = `${formatPrice(depositAmount)} сум`;
+    totalWithDeposit.textContent = `${formatPrice(orderTotal + depositAmount)} сум`;
+}
+
+// Обновление доступных количеств в таблице товаров
+function updateAvailableQuantities() {
+    const currentItemsInOrder = {{ current_items|safe }};
+    
+    document.querySelectorAll('#productsTable tr').forEach(row => {
+        const productId = parseInt(row.dataset.productId);
+        const originalAvailable = parseInt(row.dataset.available);
+        
+        // Находим изначальное количество в заявке
+        const originalInOrder = currentItemsInOrder.find(orderItem => orderItem.product_id === productId);
+        const originalQuantityInOrder = originalInOrder ? originalInOrder.quantity : 0;
+        
+        // Находим текущее количество в корзине
+        const cartItem = cart.find(item => item.product_id === productId);
+        const inCart = cartItem ? cartItem.quantity : 0;
+        
+        // Поскольку товары при редактировании pending заявки не были списаны,
+        // доступное количество = исходное_на_складе + было_в_заявке - сейчас_в_корзине
+        const actualAvailable = originalAvailable + originalQuantityInOrder - inCart;
+        
+        // Обновляем отображение доступного количества
+        const availableQtyElement = row.querySelector('.available-qty');
+        const quantityInput = row.querySelector(`#qty-${productId}`);
+        
+        if (availableQtyElement) {
+            availableQtyElement.textContent = actualAvailable;
+            
+            // Изменяем цвет badge в зависимости от количества
+            availableQtyElement.className = 'badge';
+            if (actualAvailable <= 0) {
+                availableQtyElement.classList.add('bg-danger');
+            } else if (actualAvailable <= 2) {
+                availableQtyElement.classList.add('bg-warning');
+            } else {
+                availableQtyElement.classList.add('bg-success');
+            }
+        }
+        
+        if (quantityInput) {
+            quantityInput.max = actualAvailable;
+            if (quantityInput.value > quantityInput.max) {
+                quantityInput.value = quantityInput.max;
+            }
+        }
+    });
+}
+
+function submitOrder() {
+    if (cart.length === 0) {
+        alert('Добавьте товары в заявку');
+        return;
+    }
+    
+    document.getElementById('orderForm').submit();
+}
+
+// Быстрое добавление по артикулу
+function addByArticle() {
+    const articleInput = document.getElementById('quickAddArticle');
+    const article = articleInput.value.trim();
+    
+    if (!article) {
+        alert('Введите артикул товара');
+        return;
+    }
+    
+    // Ищем товар по артикулу в таблице
+    const row = Array.from(document.querySelectorAll('#productsTable tr')).find(row => {
+        const rowArticle = row.dataset.productArticle;
+        return rowArticle && rowArticle.toLowerCase() === article.toLowerCase();
+    });
+    
+    if (!row) {
+        alert('Товар с артикулом "' + article + '" не найден');
+        return;
+    }
+    
+    const productId = parseInt(row.dataset.productId);
+    const productName = row.dataset.productName;
+    const productPrice = parseFloat(row.dataset.productPrice);
+    const originalAvailable = parseInt(row.dataset.available);
+    
+    // Получаем количество, которое было в исходной заявке
+    const currentItemsInOrder = {{ current_items|safe }};
+    const originalInOrder = currentItemsInOrder.find(orderItem => orderItem.product_id === productId);
+    const originalQuantityInOrder = originalInOrder ? originalInOrder.quantity : 0;
+    
+    // Проверяем доступность
+    const existingItem = cart.find(item => item.product_id === productId);
+    const currentInCart = existingItem ? existingItem.quantity : 0;
+    const actualAvailable = originalAvailable + originalQuantityInOrder;
+    
+    if (currentInCart >= actualAvailable) {
+        alert('Товар недоступен для добавления (недостаточно на складе)');
+        return;
+    }
+    
+    // Добавляем товар
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({
+            product_id: productId,
+            name: productName,
+            price: productPrice,
+            quantity: 1
+        });
+    }
+    
+    // Очищаем поле ввода
+    articleInput.value = '';
+    
+    // Обновляем отображение
+    updateCartDisplay();
+    updateAvailableQuantities();
+    updateDepositDisplay();
+    
+    // Показываем уведомление
+    showNotification(`Товар "${productName}" добавлен в корзину`, 'success');
+}
+
+function searchProducts() {
+    const query = document.getElementById('productSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#productsTable tr');
+    
+    rows.forEach(row => {
+        const productName = (row.dataset.productName || '').toLowerCase();
+        const article = row.querySelector('code')?.textContent.toLowerCase() || '';
+        
+        if (productName.includes(query) || article.includes(query)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Функция для показа уведомлений
+function showNotification(message, type = 'success') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 1055; min-width: 300px;';
+    alert.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 3000);
+}
+
+// Обработчики событий
+document.addEventListener('DOMContentLoaded', function() {
+    // Поиск по Enter
+    document.getElementById('productSearch').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchProducts();
+        }
+    });
+    
+    // Быстрое добавление по Enter
+    document.getElementById('quickAddArticle').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            addByArticle();
+        }
+    });
+    
+    // Отслеживание изменений залога
+    const depositInput = document.getElementById('{{ form.deposit_amount.id_for_label }}');
+    if (depositInput) {
+        depositInput.addEventListener('input', updateDepositDisplay);
+    }
+});
+</script>
+{% endblock %}

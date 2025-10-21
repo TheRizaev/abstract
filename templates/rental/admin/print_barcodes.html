@@ -1,0 +1,117 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Печать штрих-кодов - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Печать штрих-кодов</h1>
+    <button class="btn btn-primary" onclick="window.print()">
+        <i class="fas fa-print"></i> Печать
+    </button>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="barcode-grid">
+                    {% for shelf, products in products_by_shelf.items %}
+                        <h4 class="shelf-header">Полка: {{ shelf }}</h4>
+                        <div class="row g-3 mb-4">
+                            {% for product in products %}
+                            <div class="col-md-4 col-sm-6">
+                                <div class="barcode-label">
+                                    <div class="product-info">
+                                        <h6>{{ product.get_display_name }}</h6>
+                                        <p class="mb-1">Арт: {{ product.article }}</p>
+                                        <p class="mb-1">Цена: {{ product.daily_price }} сум/день</p>
+                                    </div>
+                                    <div class="barcode-image">
+                                        <img src="{% url 'generate_barcode_image' product.id %}" 
+                                             alt="Штрих-код {{ product.barcode }}"
+                                             class="img-fluid">
+                                    </div>
+                                    <div class="barcode-actions no-print">
+                                        <a href="{% url 'download_barcode' product.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i> Скачать
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.barcode-label {
+    border: 1px solid #dee2e6;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    background: white;
+    page-break-inside: avoid;
+}
+
+.product-info h6 {
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.product-info p {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.barcode-image {
+    margin: 10px 0;
+    min-height: 80px;
+}
+
+.shelf-header {
+    background-color: #f8f9fa;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    page-break-before: auto;
+}
+
+@media print {
+    .navbar,
+    .sidebar,
+    .no-print,
+    .btn,
+    .barcode-actions {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .barcode-label {
+        border: 1px solid #000;
+        margin-bottom: 10px;
+    }
+    
+    .col-md-4 {
+        width: 33.333%;
+        float: left;
+        padding: 5px;
+    }
+    
+    .shelf-header {
+        font-weight: bold;
+        background: none;
+        border-bottom: 2px solid #000;
+    }
+}
+</style>
+{% endblock %}

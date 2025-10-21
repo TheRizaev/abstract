@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load rental_filters %}
+
+{% block title %}Корзина - Аренда оборудования{% endblock %}
+
+{% block content %}
+<h1>Корзина</h1>
+
+{% if cart_items %}
+    <div class="row">
+        <div class="col-lg-8">
+            {% for item in cart_items %}
+                <div class="card mb-3">
+                    <div class="row g-0">
+                        <div class="col-md-3">
+                            {% if item.product.photo %}
+                                <img src="{{ item.product.photo.url }}" class="img-fluid rounded-start" alt="{{ item.product.name }}" style="height: 150px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-light rounded-start d-flex align-items-center justify-content-center" style="height: 150px;">
+                                    <i class="fas fa-image fa-2x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ item.product.get_display_name }}</h5>
+                                <p class="card-text">
+                                    <small class="text-muted">Арт. {{ item.product.article }}</small>
+                                </p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="card-text">
+                                            <strong>Цена:</strong> {{ item.product.daily_price|format_price }} сум/день<br>
+                                            <strong>Количество:</strong> {{ item.quantity }} шт.<br>
+                                            <strong>Дней в аренде:</strong> {{ item.days }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="price-breakdown">
+                                            <div class="small text-muted">
+                                                {{ item.product.daily_price|format_price }} сум × {{ item.quantity }} шт.
+                                            </div>
+                                            <div class="h5 text-success">
+                                                {{ item.total|format_price }} сум
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <form method="post" action="{% url 'rental:remove_from_cart' item.product.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash"></i> Удалить
+                                        </button>
+                                    </form>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="editQuantity({{ item.product.id }}, {{ item.quantity }}, {{ item.product.available_quantity }})">
+                                            <i class="fas fa-edit"></i> Изменить количество
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-calculator"></i> Итоги заказа</h5>
+                </div>
+                <div class="card-body">
+                    <div class="price-summary">
+                        {% for item in cart_items %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>
+                                    <small>{{ item.product.name }}</small><br>
+                                    <small class="text-muted">{{ item.quantity }} шт.</small>
+                                </div>
+                                <div class="text-end">
+                                    <small>{{ item.total|format_price }} сум</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <strong>Итого:</strong>
+                            <strong class="text-success h4">{{ total|format_price }} сум / день</strong>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    <a href="{% url 'rental:checkout' %}" class="btn btn-primary w-100">
+                        <i class="fas fa-credit-card"></i> Оформить заявку
+                    </a>
+                    <a href="{% url 'rental:product_list' %}" class="btn btn-outline-secondary w-100 mt-2">
+                        <i class="fas fa-arrow-left"></i> Продолжить покупки
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-shopping-cart fa-5x text-muted mb-3"></i>
+        <h3 class="text-muted">Корзина пуста</h3>
+        <p class="text-muted">Добавьте товары в корзину, чтобы продолжить</p>
+        <a href="{% url 'rental:product_list' %}" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> Перейти к каталогу
+        </a>
+    </div>
+{% endif %}
+
+<!-- Модальное окно изменения количества -->
+<div class="modal fade" id="editQuantityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Изменить количество</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editQuantityForm" method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" id="editProductId" name="product_id">
+                    <div class="mb-3">
+                        <label for="newQuantity" class="form-label">Новое количество:</label>
+                        <input type="number" class="form-control" id="newQuantity" name="quantity" min="1" required>
+                        <small class="text-muted">Доступно: <span id="availableQuantity"></span> шт.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Обновить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editQuantity(productId, currentQuantity, availableQuantity) {
+    document.getElementById('editProductId').value = productId;
+    document.getElementById('newQuantity').value = currentQuantity;
+    document.getElementById('newQuantity').max = availableQuantity;
+    document.getElementById('availableQuantity').textContent = availableQuantity;
+    
+    // Устанавливаем действие формы
+    document.getElementById('editQuantityForm').action = `{% url 'rental:update_cart_quantity' %}`;
+    
+    new bootstrap.Modal(document.getElementById('editQuantityModal')).show();
+}
+
+function editDays(productId, currentDays) {
+    console.log('Открытие редактирования дней:', {productId, currentDays});
+    
+    document.getElementById('editDaysProductId').value = productId;
+    document.getElementById('newDays').value = currentDays;
+    
+    // Проверяем, что значения установились
+    console.log('Значения в форме:', {
+        productId: document.getElementById('editDaysProductId').value,
+        days: document.getElementById('newDays').value
+    });
+    
+    new bootstrap.Modal(document.getElementById('editDaysModal')).show();
+}
+
+// Обработка формы изменения дней
+document.getElementById('editDaysForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const productId = formData.get('product_id');
+    const newDays = formData.get('days');
+    
+    console.log('Изменение дней:', {productId, newDays});
+    
+    // Проверяем данные
+    if (!productId || !newDays) {
+        alert('Ошибка: не все данные заполнены');
+        return;
+    }
+    
+    // Перенаправляем на URL для обновления дней в корзине
+    const url = `/update-cart-days/?product_id=${productId}&days=${newDays}`;
+    console.log('Переход на URL:', url);
+    window.location.href = url;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в админ панель - ABSTRACT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --black: #000000;
+            --white: #ffffff;
+            --gray-900: #212529;
+            --gray-800: #343a40;
+            --gray-700: #495057;
+            --gray-600: #6c757d;
+            --gray-500: #adb5bd;
+            --gray-400: #ced4da;
+            --gray-300: #dee2e6;
+            --gray-200: #e9ecef;
+            --gray-100: #f8f9fa;
+            --blue: #0d6efd;
+            --blue-light: #cfe2ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-100);
+            min-height: 100vh;
+            color: var(--gray-900);
+        }
+
+        /* Main container */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        /* Login card */
+        .login-card {
+            background: var(--white);
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Header */
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            width: 180px;
+            height: auto;
+            margin-bottom: 1.5rem;
+            filter: brightness(0) saturate(100%) invert(15%) sepia(8%) saturate(928%) hue-rotate(169deg) brightness(93%) contrast(93%);
+        }
+
+        .login-title {
+            color: var(--gray-900);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+
+        /* Form */
+        .login-form {
+            margin-top: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            color: var(--gray-900);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            display: block;
+        }
+
+        .form-control {
+            background: var(--white);
+            border: 1px solid var(--gray-400);
+            border-radius: 4px;
+            color: var(--gray-900);
+            font-size: 0.875rem;
+            padding: 0.75rem;
+            width: 100%;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-control::placeholder {
+            color: var(--gray-500);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+        }
+
+        .form-control.is-invalid {
+            border-color: #dc3545;
+        }
+
+        .password-container {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--gray-600);
+            cursor: pointer;
+            font-size: 0.875rem;
+            padding: 0.25rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--gray-900);
+        }
+
+        /* Button */
+        .login-btn {
+            background: var(--blue);
+            border: 1px solid var(--blue);
+            border-radius: 4px;
+            color: var(--white);
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            background: #0b5ed7;
+            border-color: #0a58ca;
+        }
+
+        .login-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+        }
+
+        .login-btn:disabled {
+            background: var(--gray-400);
+            border-color: var(--gray-400);
+            cursor: not-allowed;
+        }
+
+        /* Loading state */
+        .login-btn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .login-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid transparent;
+            border-top-color: var(--white);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert messages */
+        .alert {
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid transparent;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #f5c2c7;
+            color: #842029;
+        }
+
+        .alert-success {
+            background-color: #d1edff;
+            border-color: #b6d7ff;
+            color: #055160;
+        }
+
+        .alert-info {
+            background-color: var(--blue-light);
+            border-color: #b6d7ff;
+            color: #055160;
+        }
+
+        /* Error text */
+        .text-danger {
+            color: #dc3545;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Links */
+        .back-to-site {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--gray-300);
+        }
+
+        .back-link {
+            color: var(--gray-600);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.15s ease-in-out;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .back-link:hover {
+            color: var(--gray-900);
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .login-container {
+                padding: 1rem;
+            }
+
+            .login-card {
+                padding: 2rem 1.5rem;
+                margin: 0;
+            }
+
+            .logo {
+                width: 140px;
+            }
+
+            .login-title {
+                font-size: 1.25rem;
+            }
+
+            .login-subtitle {
+                font-size: 0.8125rem;
+            }
+        }
+
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            .form-control {
+                border-width: 2px;
+            }
+
+            .login-btn {
+                border-width: 2px;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus indicators */
+        .form-control:focus-visible,
+        .login-btn:focus-visible,
+        .back-link:focus-visible,
+        .password-toggle:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: var(--white);
+            }
+            
+            .login-card {
+                box-shadow: none;
+                border: 2px solid var(--black);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                {% load static %}
+                <img src="{% static 'images/logo.png' %}" alt="ABSTRACT" class="logo">
+                <h1 class="login-title">Админ панель</h1>
+                <p class="login-subtitle">Вход в систему управления</p>
+            </div>
+
+            <!-- Сообщения Django -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}" role="alert">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-{% if message.tags == 'error' or message.tags == 'danger' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% else %}info-circle{% endif %} me-2 mt-1" style="font-size: 0.875rem;"></i>
+                            <div style="font-size: 0.875rem;">{{ message }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Сообщения об ошибках формы -->
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-exclamation-circle me-2 mt-1" style="font-size: 0.875rem;"></i>
+                        <div style="font-size: 0.875rem;">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <form method="post" class="login-form" novalidate>
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="{{ form.username.id_for_label }}" class="form-label">
+                        Имя пользователя
+                    </label>
+                    <input type="text" 
+                           name="username" 
+                           class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                           id="{{ form.username.id_for_label }}"
+                           placeholder="Введите имя пользователя"
+                           value="{{ form.username.value|default:'' }}"
+                           autocomplete="username"
+                           required>
+                    {% if form.username.errors %}
+                        <div class="text-danger">
+                            {% for error in form.username.errors %}
+                                <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.password.id_for_label }}" class="form-label">
+                        Пароль
+                    </label>
+                    <div class="password-container">
+                        <input type="password" 
+                               name="password" 
+                               class="form-control {% if form.password.errors %}is-invalid{% endif %}" 
+                               id="{{ form.password.id_for_label }}"
+                               placeholder="Введите пароль"
+                               autocomplete="current-password"
+                               required>
+                        <button type="button" 
+                                class="password-toggle" 
+                                onclick="togglePassword()"
+                                aria-label="Показать/скрыть пароль"
+                                tabindex="-1">
+                            <i class="fas fa-eye" id="password-icon"></i>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="text-danger">
+                            {% for error in form.password.errors %}
+                                <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="login-btn" id="loginBtn">
+                    Войти в систему
+                </button>
+            </form>
+
+            <div class="back-to-site">
+                <a href="{% url 'rental:preview' %}" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Вернуться на сайт
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password visibility toggle
+        function togglePassword() {
+            const passwordInput = document.getElementById('{{ form.password.id_for_label }}');
+            const passwordIcon = document.getElementById('password-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.className = 'fas fa-eye';
+            }
+        }
+
+        // Form submission with loading state
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+            const loginBtn = document.getElementById('loginBtn');
+            const username = document.getElementById('{{ form.username.id_for_label }}').value.trim();
+            const password = document.getElementById('{{ form.password.id_for_label }}').value.trim();
+
+            // Basic validation
+            if (!username || !password) {
+                e.preventDefault();
+                showError('Пожалуйста, заполните все поля');
+                return;
+            }
+
+            // Show loading state
+            loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
+        });
+
+        // Show error message
+        function showError(message) {
+            // Remove existing custom alerts
+            const existingAlert = document.querySelector('.custom-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            // Create new alert
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger custom-alert';
+            alert.role = 'alert';
+            alert.innerHTML = `
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-exclamation-circle me-2 mt-1" style="font-size: 0.875rem;"></i>
+                    <div style="font-size: 0.875rem;">${message}</div>
+                </div>
+            `;
+
+            // Insert before form
+            const form = document.querySelector('.login-form');
+            form.parentNode.insertBefore(alert, form);
+
+            // Remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        // Focus management
+        document.addEventListener('DOMContentLoaded', function() {
+            // Focus on first empty input
+            const usernameInput = document.getElementById('{{ form.username.id_for_label }}');
+            const passwordInput = document.getElementById('{{ form.password.id_for_label }}');
+            
+            if (usernameInput && !usernameInput.value) {
+                usernameInput.focus();
+            } else if (passwordInput && !passwordInput.value) {
+                passwordInput.focus();
+            }
+
+            // Handle Enter key navigation
+            usernameInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    passwordInput.focus();
+                }
+            });
+
+            passwordInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.querySelector('.login-form').submit();
+                }
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Escape key to clear form
+            if (e.key === 'Escape') {
+                document.getElementById('{{ form.username.id_for_label }}').value = '';
+                document.getElementById('{{ form.password.id_for_label }}').value = '';
+                document.getElementById('{{ form.username.id_for_label }}').focus();
+            }
+        });
+
+        // Remove loading state on page load (in case of errors)
+        window.addEventListener('load', function() {
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
+            }
+        });
+
+        // Prevent double submission
+        let formSubmitted = false;
+        document.querySelector('.login-form').addEventListener('submit', function(e) {
+            if (formSubmitted) {
+                e.preventDefault();
+                return false;
+            }
+            formSubmitted = true;
+        });
+
+        // Auto-dismiss alerts after 8 seconds
+        document.querySelectorAll('.alert:not(.custom-alert)').forEach(alert => {
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.style.opacity = '0';
+                    alert.style.transition = 'opacity 0.3s ease';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 8000);
+        });
+    </script>
+</body>
+</html>

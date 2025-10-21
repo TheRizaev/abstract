@@ -1,0 +1,136 @@
+{% extends 'rental/admin/base_admin.html' %}
+
+{% block title %}Скидочные коды - Админ панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">Скидочные коды</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCodeModal">
+        <i class="fas fa-plus"></i> Добавить код
+    </button>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Код</th>
+                                <th>Скидка</th>
+                                <th>Статус</th>
+                                <th>Дата создания</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code in discount_codes %}
+                            <tr>
+                                <td>
+                                    <code class="fs-6 bg-light px-2 py-1 rounded">{{ code.code }}</code>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success fs-6">{{ code.discount_percent }}%</span>
+                                </td>
+                                <td>
+                                    {% if code.is_active %}
+                                        <span class="badge bg-success">Активен</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Неактивен</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ code.created_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <form method="post" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="code_id" value="{{ code.id }}">
+                                            <button type="submit" name="toggle_status" 
+                                                    class="btn btn-sm {% if code.is_active %}btn-warning{% else %}btn-success{% endif %}"
+                                                    title="{% if code.is_active %}Деактивировать{% else %}Активировать{% endif %}">
+                                                <i class="fas {% if code.is_active %}fa-pause{% else %}fa-play{% endif %}"></i>
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="deleteCode({{ code.id }}, '{{ code.code }}')"
+                                                title="Удалить">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Скидочных кодов пока нет</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления кода -->
+<div class="modal fade" id="addCodeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить скидочный код</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="codeInput" class="form-label">Код скидки</label>
+                        <input type="text" name="code" class="form-control" id="codeInput" 
+                               placeholder="Например: SALE20" required style="text-transform: uppercase;">
+                        <small class="form-text text-muted">Код будет автоматически преобразован в верхний регистр</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="discountInput" class="form-label">Процент скидки</label>
+                        <div class="input-group">
+                            <input type="number" name="discount_percent" class="form-control" 
+                                   id="discountInput" min="0" max="100" step="0.01" 
+                                   placeholder="10" required>
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <small class="form-text text-muted">От 0 до 100 процентов</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="add_code" class="btn btn-primary">Создать код</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Форма удаления (скрытая) -->
+<form method="post" id="deleteForm" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="code_id" id="deleteCodeId">
+    <input type="hidden" name="delete_code" value="1">
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteCode(codeId, codeName) {
+    if (confirm(`Вы уверены, что хотите удалить код "${codeName}"?`)) {
+        document.getElementById('deleteCodeId').value = codeId;
+        document.getElementById('deleteForm').submit();
+    }
+}
+
+// Автоматическое преобразование в верхний регистр
+document.getElementById('codeInput').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+});
+</script>
+{% endblock %}

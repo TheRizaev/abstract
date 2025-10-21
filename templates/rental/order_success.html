@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Заявка отправлена - Аренда оборудования{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
+    <h1 class="text-success">Заявка успешно отправлена!</h1>
+    <p class="lead">Номер заявки: #{{ order.id }}</p>
+    
+    <div class="alert alert-info">
+        {% if order.created_by_admin %}
+            <i class="fas fa-info-circle"></i> Ваша заявка автоматически подтверждена и товары зарезервированы.
+        {% else %}
+            <i class="fas fa-info-circle"></i> Ваша заявка ожидает подтверждения администратора.
+        {% endif %}
+    </div>
+    
+    <div class="mt-4">
+        <a href="{% url 'rental:download_order_pdf' order.id %}" class="btn btn-primary me-2">
+            <i class="fas fa-download"></i> Скачать PDF
+        </a>
+        <a href="{% url 'rental:product_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-home"></i> На главную
+        </a>
+    </div>
+</div>
+{% endblock %}
