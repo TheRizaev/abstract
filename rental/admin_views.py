@@ -784,14 +784,43 @@ def edit_order(request, order_id):
         return redirect('admin_order_detail', order_id=order.id)
     
     if request.method == 'POST':
+        print("=== НАЧАЛО ОБРАБОТКИ POST ЗАПРОСА ===")
+        print("POST данные:", request.POST)
+        
         # Передаем пользователя в форму
         form = OrderForm(request.POST, instance=order, user=request.user)
-        if form.is_valid():
-            order = form.save(commit=False)
-            
-            # Получаем товары из POST данных
-            cart_data = request.POST.get('cart_data', '[]')
+        
+        # Получаем товары из POST данных
+        cart_data = request.POST.get('cart_data', '[]')
+        print("Данные корзины (raw):", cart_data)
+        
+        try:
             cart_items = json.loads(cart_data)
+            print("Распарсенные товары:", cart_items)
+        except json.JSONDecodeError as e:
+            print("ОШИБКА парсинга JSON:", e)
+            messages.error(request, 'Ошибка обработки данных корзины')
+            return render(request, 'rental/admin/edit_order.html', {
+                'form': form,
+                'order': order,
+                'products': Product.objects.all(),
+                'current_items': []
+            })
+        
+        if not cart_items:
+            messages.error(request, 'Добавьте хотя бы один товар в заявку')
+            return render(request, 'rental/admin/edit_order.html', {
+                'form': form,
+                'order': order,
+                'products': Product.objects.all(),
+                'current_items': []
+            })
+        
+        if form.is_valid():
+            print("Форма валидна!")
+            
+            # Сохраняем заказ БЕЗ коммита, чтобы обновить поля
+            order = form.save(commit=False)
             
             # ВАЖНО: При редактировании pending заявки товары НЕ БЫЛИ списаны с available_quantity
             # поэтому мы НЕ возвращаем их на склад, просто удаляем старые позиции заявки
@@ -801,8 +830,11 @@ def edit_order(request, order_id):
             for item in order.items.all():
                 old_items[item.product.id] = item.quantity
             
+            print("Старые товары в заявке:", old_items)
+            
             # Удаляем старые позиции заявки
             order.items.all().delete()
+            print("Старые позиции удалены")
             
             # Проверяем доступность новых товаров
             for item in cart_items:
@@ -812,6 +844,7 @@ def edit_order(request, order_id):
                     # При проверке доступности учитываем, что старые товары не были списаны
                     # available_quantity уже включает в себя товары из старой заявки
                     if product.available_quantity < item['quantity']:
+                        print(f"ОШИБКА: Недостаточно товара {product.name}")
                         messages.error(request, f'Недостаточно товара "{product.name}" на складе. Доступно: {product.available_quantity}, требуется: {item["quantity"]}')
                         
                         # Восстанавливаем старые позиции заявки
@@ -845,6 +878,7 @@ def edit_order(request, order_id):
             # Рассчитываем общую сумму
             total = 0
             rental_days = (order.rental_end - order.rental_start).days + 1
+            print(f"Количество дней аренды: {rental_days}")
             
             for item in cart_items:
                 try:
@@ -853,46 +887,70 @@ def edit_order(request, order_id):
                 except Product.DoesNotExist:
                     pass
             
+            print(f"Общая сумма: {total}")
+            
             order.total_amount = total
             order.save()
+            print("Заказ сохранен")
             
             # Создаем новые позиции заявки
             for item in cart_items:
                 try:
                     product = Product.objects.get(id=item['product_id'])
-                    OrderItem.objects.create(
+                    order_item = OrderItem.objects.create(
                         order=order,
                         product=product,
                         quantity=item['quantity'],
                         price=product.daily_price * rental_days  # Цена за единицу за весь период
                     )
+                    print(f"Создан OrderItem: {product.name} x {item['quantity']}")
                 except Product.DoesNotExist:
                     pass
             
+            print("=== ЗАЯВКА УСПЕШНО ОБНОВЛЕНА ===")
             messages.success(request, 'Заявка успешно обновлена!')
             return redirect('admin_order_detail', order_id=order.id)
+        else:
+            print("ОШИБКИ ФОРМЫ:", form.errors)
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
     else:
         # Передаем пользователя и при GET запросе
         form = OrderForm(instance=order, user=request.user)
 
-    all_products = Product.objects.all()
+    all_products = Product.objects.all().order_by('name')
     
+    # ИСПРАВЛЕНО: Формируем current_items с правильной структурой
     current_items = []
+    print(f"=== Формируем current_items для заявки #{order.id} ===")
     for item in order.items.all():
-        current_items.append({
+        item_data = {
             'product_id': item.product.id,
             'name': item.product.get_display_name(),
             'price': float(item.product.daily_price),
             'quantity': item.quantity
-        })
+        }
+        current_items.append(item_data)
+        print(f"  Товар: {item.product.name} x {item.quantity}")
+    
+    print(f"Всего товаров в заявке: {len(current_items)}")
+    
+    # Преобразуем в JSON для передачи в шаблон
+    import json
+    current_items_json = json.dumps(current_items)
+    print(f"Current items JSON: {current_items_json}")
     
     context = {
         'form': form,
         'order': order,
         'products': all_products,
-        'current_items': current_items,
+        'current_items': current_items_json,  # Передаем как JSON строку
     }
     return render(request, 'rental/admin/edit_order.html', context)
+
+
+
 
 @user_passes_test(is_admin)
 def barcode_scanner(request):

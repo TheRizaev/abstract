@@ -1,5 +1,5 @@
-
 {% extends 'rental/admin/base_admin.html' %}
+{% load rental_filters %}
 
 {% block title %}Редактировать заявку #{{ order.id }} - Админ панель{% endblock %}
 
@@ -59,7 +59,7 @@
                         </div>
                         <div class="col-md-6"></div>
                         
-                        <!-- НОВЫЕ ПОЛЯ -->
+                        <!-- Информация о проекте -->
                         <div class="col-12 mt-4">
                             <h6 class="text-success mb-3">
                                 <i class="fas fa-project-diagram me-2"></i>Информация о проекте
@@ -134,14 +134,24 @@
                         
                         <div class="col-md-6">
                             <label for="{{ form.rental_start.id_for_label }}" class="form-label">Начало аренды</label>
-                            {{ form.rental_start }}
+                            <input type="date" 
+                                   name="rental_start" 
+                                   class="form-control" 
+                                   id="{{ form.rental_start.id_for_label }}"
+                                   value="{{ order.rental_start|date:'Y-m-d' }}"
+                                   required>
                             {% if form.rental_start.errors %}
                                 <div class="text-danger">{{ form.rental_start.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-6">
                             <label for="{{ form.rental_end.id_for_label }}" class="form-label">Конец аренды</label>
-                            {{ form.rental_end }}
+                            <input type="date" 
+                                   name="rental_end" 
+                                   class="form-control" 
+                                   id="{{ form.rental_end.id_for_label }}"
+                                   value="{{ order.rental_end|date:'Y-m-d' }}"
+                                   required>
                             {% if form.rental_end.errors %}
                                 <div class="text-danger">{{ form.rental_end.errors }}</div>
                             {% endif %}
@@ -219,7 +229,16 @@
                             <i class="fas fa-barcode"></i> Быстрое добавление по артикулу
                         </label>
                         <div class="input-group">
-                            <input type="text" id="productSearch" class="form-control" placeholder="Поиск по названию или артикулу...">
+                            <input type="text" id="quickAddArticle" class="form-control" placeholder="Введите артикул товара и нажмите Enter" maxlength="13">
+                            <button class="btn btn-success" type="button" onclick="addByArticle()">
+                                <i class="fas fa-plus"></i> Добавить
+                            </button>
+                        </div>
+                        <small class="text-muted">Товар будет добавлен в количестве 1 шт.</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Поиск товаров</label>
+                        <input type="text" id="productSearch" class="form-control" placeholder="Поиск по названию или артикулу...">
                     </div>
                 </div>
                 
@@ -249,7 +268,7 @@
                                 </td>
                                 <td><code>{{ product.article }}</code></td>
                                 <td><span class="badge bg-success available-qty">{{ product.available_quantity }}</span></td>
-                                <td>{{ product.daily_price }} сум</td>
+                                <td>{{ product.daily_price|format_price }} сум</td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <input type="number" class="form-control form-control-sm me-2" style="width: 70px;" value="1" min="1" max="{{ product.available_quantity }}" id="qty-{{ product.id }}">
@@ -279,32 +298,88 @@ function formatPrice(price) {
 // Загружаем текущие товары из заявки
 let cart = [];
 
+// ВАЖНО: Инициализация объекта скидки
+let appliedDiscount = {
+    code: null,
+    percent: 0,
+    amount: 0
+};
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== ИНИЦИАЛИЗАЦИЯ РЕДАКТИРОВАНИЯ ЗАЯВКИ ===');
+    
     // Преобразуем данные из шаблона в правильный формат
     const currentItems = {{ current_items|safe }};
+    console.log('Текущие товары в заявке:', currentItems);
+    
     cart = currentItems.map(item => ({
         product_id: item.product_id,
         name: item.name,
         price: item.price,
         quantity: item.quantity
     }));
+    
+    console.log('Корзина инициализирована:', cart);
+    
+    // Обновляем отображение
     updateCartDisplay();
     updateAvailableQuantities();
-    updateDepositDisplay();
+    
+    // Инициализируем залог после загрузки корзины
+    setTimeout(() => {
+        updateDepositDisplay();
+    }, 100);
+    
+    // Поиск по Enter
+    document.getElementById('productSearch').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchProducts();
+        }
+    });
+    
+    // Быстрое добавление по Enter
+    document.getElementById('quickAddArticle').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addByArticle();
+        }
+    });
+    
+    // Отслеживание изменений залога
+    const depositInput = document.getElementById('{{ form.deposit_amount.id_for_label }}');
+    if (depositInput) {
+        depositInput.addEventListener('input', updateDepositDisplay);
+    }
+    
+    console.log('=== ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА ===');
 });
 
 function addToCart(productId) {
+    console.log('Добавление товара в корзину:', productId);
+    
     const row = document.querySelector(`tr[data-product-id="${productId}"]`);
+    if (!row) {
+        console.error('Строка товара не найдена!');
+        alert('Ошибка: товар не найден');
+        return;
+    }
+    
     const productName = row.dataset.productName;
     const productPrice = parseFloat(row.dataset.productPrice);
-    const quantity = parseInt(document.getElementById(`qty-${productId}`).value);
+    const quantityInput = document.getElementById(`qty-${productId}`);
+    const quantity = parseInt(quantityInput.value);
+    
+    console.log('Данные товара:', { productName, productPrice, quantity });
     
     // Получаем реальное доступное количество с учетом товаров в корзине
     const originalAvailable = parseInt(row.dataset.available);
     const existingItem = cart.find(item => item.product_id === productId);
     const inCart = existingItem ? existingItem.quantity : 0;
     const actualAvailable = originalAvailable + inCart; // При редактировании товары еще не списались
+    
+    console.log('Доступность:', { originalAvailable, inCart, actualAvailable });
     
     if (quantity > actualAvailable - inCart) {
         alert('Недостаточно товара на складе');
@@ -318,6 +393,7 @@ function addToCart(productId) {
             return;
         }
         existingItem.quantity += quantity;
+        console.log('Товар уже был в корзине, обновлено количество:', existingItem.quantity);
     } else {
         cart.push({
             product_id: productId,
@@ -325,14 +401,20 @@ function addToCart(productId) {
             price: productPrice,
             quantity: quantity
         });
+        console.log('Товар добавлен в корзину');
     }
+    
+    console.log('Текущая корзина:', cart);
     
     updateCartDisplay();
     updateAvailableQuantities();
     updateDepositDisplay();
+    
+    showNotification(`Товар "${productName}" добавлен в корзину`, 'success');
 }
 
 function removeFromCart(productId) {
+    console.log('Удаление товара из корзины:', productId);
     cart = cart.filter(item => item.product_id !== productId);
     updateCartDisplay();
     updateAvailableQuantities();
@@ -341,6 +423,8 @@ function removeFromCart(productId) {
 
 // Новая функция для изменения количества в корзине
 function changeCartQuantity(productId, delta) {
+    console.log('Изменение количества в корзине:', productId, delta);
+    
     const item = cart.find(item => item.product_id === productId);
     if (!item) return;
     
@@ -373,6 +457,8 @@ function changeCartQuantity(productId, delta) {
 }
 
 function updateCartDisplay() {
+    console.log('Обновление отображения корзины');
+    
     const cartItems = document.getElementById('cartItems');
     const totalAmount = document.getElementById('totalAmount');
     const submitBtn = document.getElementById('submitBtn');
@@ -445,15 +531,16 @@ function updateCartDisplay() {
     
     // Обновляем скрытое поле с данными корзины
     document.getElementById('cartData').value = JSON.stringify(cart);
+    
+    console.log('Корзина обновлена, товаров:', cart.length, 'Сумма:', finalTotal);
 }
 
 // Обновление отображения залога
 function updateDepositDisplay() {
     const depositInput = document.getElementById('{{ form.deposit_amount.id_for_label }}');
     const depositDisplay = document.getElementById('depositDisplay');
-    const totalWithDeposit = document.getElementById('totalWithDeposit');
     
-    if (!depositInput || !depositDisplay || !totalWithDeposit) return;
+    if (!depositInput || !depositDisplay) return;
     
     const depositAmount = parseFloat(depositInput.value) || 0;
     let orderTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -465,7 +552,6 @@ function updateDepositDisplay() {
     }
     
     depositDisplay.textContent = `${formatPrice(depositAmount)} сум`;
-    totalWithDeposit.textContent = `${formatPrice(orderTotal + depositAmount)} сум`;
 }
 
 // Обновление доступных количеств в таблице товаров
@@ -474,6 +560,8 @@ function updateAvailableQuantities() {
     
     document.querySelectorAll('#productsTable tr').forEach(row => {
         const productId = parseInt(row.dataset.productId);
+        if (!productId) return;
+        
         const originalAvailable = parseInt(row.dataset.available);
         
         // Находим изначальное количество в заявке
@@ -521,7 +609,38 @@ function submitOrder() {
         return;
     }
     
-    document.getElementById('orderForm').submit();
+    console.log('=== ОТПРАВКА ЗАЯВКИ ===');
+    console.log('Корзина:', cart);
+    
+    // ВАЖНО: Обновляем скрытое поле с данными корзины
+    const cartDataInput = document.getElementById('cartData');
+    const cartDataJSON = JSON.stringify(cart);
+    cartDataInput.value = cartDataJSON;
+    
+    console.log('Данные корзины в JSON:', cartDataJSON);
+    console.log('Значение скрытого поля:', cartDataInput.value);
+    
+    // Проверяем, что форма существует
+    const form = document.getElementById('orderForm');
+    if (!form) {
+        console.error('Форма не найдена!');
+        alert('Ошибка: форма не найдена');
+        return;
+    }
+    
+    // Показываем индикатор загрузки
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Сохранение...';
+    
+    console.log('Отправка формы...');
+    console.log('Данные формы:');
+    const formData = new FormData(form);
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
+    
+    form.submit();
 }
 
 // Быстрое добавление по артикулу
@@ -625,27 +744,93 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
-// Обработчики событий
-document.addEventListener('DOMContentLoaded', function() {
-    // Поиск по Enter
-    document.getElementById('productSearch').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            searchProducts();
-        }
-    });
+// Функция для проверки скидочного кода
+function checkDiscountCode() {
+    const discountInput = document.getElementById('{{ form.discount_code.id_for_label }}');
+    const discountResult = document.getElementById('discountResult');
+    const checkBtn = document.getElementById('checkDiscountBtn');
     
-    // Быстрое добавление по Enter
-    document.getElementById('quickAddArticle').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            addByArticle();
-        }
-    });
+    const code = discountInput.value.trim().toUpperCase();
     
-    // Отслеживание изменений залога
-    const depositInput = document.getElementById('{{ form.deposit_amount.id_for_label }}');
-    if (depositInput) {
-        depositInput.addEventListener('input', updateDepositDisplay);
+    if (!code) {
+        discountResult.innerHTML = '<small class="text-muted">Введите код скидки</small>';
+        return;
     }
-});
+    
+    // Показываем индикатор загрузки
+    checkBtn.disabled = true;
+    checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    discountResult.innerHTML = '<small class="text-info"><i class="fas fa-spinner fa-spin me-1"></i>Проверяем код...</small>';
+    
+    // Проверяем код через API
+    fetch(`{% url 'check_discount_code_api' %}?code=${encodeURIComponent(code)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.valid) {
+                // Код действителен
+                appliedDiscount = {
+                    code: data.code,
+                    percent: data.discount_percent,
+                    amount: 0 // будет рассчитано в updateCartDisplay
+                };
+                
+                discountResult.innerHTML = `
+                    <div class="alert alert-success py-2">
+                        <i class="fas fa-check-circle me-1"></i>
+                        <strong>Код принят!</strong> Скидка ${data.discount_percent}%
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeDiscount()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                discountInput.value = data.code;
+                discountInput.readOnly = true;
+                
+                // Пересчитываем сумму
+                updateCartDisplay();
+                updateDepositDisplay();
+                
+            } else {
+                // Код недействителен
+                appliedDiscount = { code: null, percent: 0, amount: 0 };
+                discountResult.innerHTML = `
+                    <div class="alert alert-danger py-2">
+                        <i class="fas fa-times-circle me-1"></i>
+                        ${data.error || 'Неверный код скидки'}
+                    </div>
+                `;
+                updateCartDisplay();
+                updateDepositDisplay();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking discount code:', error);
+            discountResult.innerHTML = `
+                <div class="alert alert-warning py-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Ошибка при проверке кода. Попробуйте позже.
+                </div>
+            `;
+        })
+        .finally(() => {
+            checkBtn.disabled = false;
+            checkBtn.innerHTML = '<i class="fas fa-check"></i> Проверить';
+        });
+}
+
+// Функция для удаления скидки
+function removeDiscount() {
+    const discountInput = document.getElementById('{{ form.discount_code.id_for_label }}');
+    const discountResult = document.getElementById('discountResult');
+    
+    appliedDiscount = { code: null, percent: 0, amount: 0 };
+    discountInput.value = '';
+    discountInput.readOnly = false;
+    discountResult.innerHTML = '';
+    
+    updateCartDisplay();
+    updateDepositDisplay();
+}
 </script>
 {% endblock %}
