@@ -162,6 +162,9 @@
                     <div class="mb-3">
                         <label for="{{ form.tags.id_for_label }}" class="form-label">Теги</label>
                         
+                        <!-- СКРЫТОЕ ПОЛЕ: Сохраняем выбранные теги в JSON для JavaScript -->
+                        <input type="hidden" id="existing-tags-data" value='[{% for tag in product.tags.all %}{{ tag.id }}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                        
                         <!-- Поиск тегов -->
                         <div class="mb-3">
                             <input type="text" id="tagSearch" class="form-control" placeholder="Поиск тегов..." onkeyup="filterTags()">
@@ -398,173 +401,133 @@
 // Сохраняем выбранные теги для восстановления после загрузки структуры
 let selectedTagIds = [];
 
-// Автозаполнение и функции как в add_product.html
-// Переменные для автозаполнения
-let autocompleteTimeout;
-let currentFocus = -1;
-
-// Функция автозаполнения названий товаров
-function setupProductNameAutocomplete() {
-    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
-    const dropdown = document.getElementById('autocomplete-dropdown');
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ: Сбор тегов из скрытого поля
+function collectExistingTags() {
+    selectedTagIds = [];
     
-    if (!nameInput || !dropdown) return;
+    console.log('=== Начинаем сбор существующих тегов товара ===');
     
-    nameInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        
-        // Очищаем предыдущий таймер
-        clearTimeout(autocompleteTimeout);
-        
-        if (query.length < 2) {
-            dropdown.classList.add('d-none');
-            return;
-        }
-        
-        // Задержка для уменьшения нагрузки на сервер
-        autocompleteTimeout = setTimeout(() => {
-            fetchSuggestions(query);
-        }, 300);
-    });
+    // Получаем данные из скрытого поля
+    const hiddenInput = document.getElementById('existing-tags-data');
     
-    // Обработка клавиш навигации
-    nameInput.addEventListener('keydown', function(e) {
-        const items = dropdown.querySelectorAll('.autocomplete-item');
-        
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            currentFocus++;
-            if (currentFocus >= items.length) currentFocus = 0;
-            setActiveItem(items);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            currentFocus--;
-            if (currentFocus < 0) currentFocus = items.length - 1;
-            setActiveItem(items);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentFocus > -1 && items[currentFocus]) {
-                selectSuggestion(items[currentFocus].textContent);
+    if (hiddenInput && hiddenInput.value) {
+        try {
+            const tags = JSON.parse(hiddenInput.value);
+            console.log('Данные из скрытого поля:', hiddenInput.value);
+            
+            if (Array.isArray(tags)) {
+                selectedTagIds = tags.map(t => parseInt(t)).filter(t => !isNaN(t));
+                console.log('✓ Успешно загружены теги:', selectedTagIds);
+                console.log(`✓ Всего тегов: ${selectedTagIds.length}`);
+            } else {
+                console.warn('✗ Данные не являются массивом:', tags);
             }
-        } else if (e.key === 'Escape') {
-            dropdown.classList.add('d-none');
-            currentFocus = -1;
+        } catch (e) {
+            console.error('✗ Ошибка парсинга JSON:', e);
+            console.error('✗ Значение поля:', hiddenInput.value);
         }
-    });
+    } else {
+        console.warn('✗ Скрытое поле с тегами не найдено или пусто');
+    }
     
-    // Скрытие при клике вне элемента
-    document.addEventListener('click', function(e) {
-        if (!nameInput.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('d-none');
-        }
-    });
-}
-
-// Получение предложений с сервера
-function fetchSuggestions(query) {
-    fetch(`/superuser/api/product-name-autocomplete/?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            displaySuggestions(data.suggestions);
-        })
-        .catch(error => {
-            console.error('Ошибка автозаполнения:', error);
+    // Дополнительная проверка: пытаемся найти теги в Django форме
+    if (selectedTagIds.length === 0) {
+        console.log('Пытаемся найти теги в Django форме...');
+        
+        const checkboxes = document.querySelectorAll('input[name="tags"]');
+        console.log(`Найдено чекбоксов Django: ${checkboxes.length}`);
+        
+        checkboxes.forEach(checkbox => {
+            if (checkbox.type === 'checkbox' && checkbox.checked) {
+                const tagId = parseInt(checkbox.value);
+                if (!isNaN(tagId) && !selectedTagIds.includes(tagId)) {
+                    selectedTagIds.push(tagId);
+                    console.log('Добавлен тег из Django формы:', tagId);
+                }
+            }
         });
+    }
+    
+    console.log('=== Финальный список тегов для восстановления:', selectedTagIds, '===');
+    return selectedTagIds;
 }
 
-// Отображение предложений
-function displaySuggestions(suggestions) {
-    const dropdown = document.getElementById('autocomplete-dropdown');
-    dropdown.innerHTML = '';
-    currentFocus = -1;
+// Функция для восстановления выбранных тегов после загрузки структуры
+function restoreSelectedTags() {
+    console.log('=== Начинаем восстановление тегов ===');
+    console.log('Теги для восстановления:', selectedTagIds);
     
-    if (suggestions.length === 0) {
-        dropdown.classList.add('d-none');
+    if (!selectedTagIds || selectedTagIds.length === 0) {
+        console.warn('✗ Нет тегов для восстановления!');
+        updateSelectedTags(); // Обновляем UI даже если тегов нет
         return;
     }
     
-    suggestions.forEach(suggestion => {
-        const item = document.createElement('div');
-        item.className = 'autocomplete-item';
-        item.textContent = suggestion;
-        item.addEventListener('click', () => selectSuggestion(suggestion));
-        dropdown.appendChild(item);
-    });
+    let restoredCount = 0;
+    let notFoundCount = 0;
     
-    dropdown.classList.remove('d-none');
-}
-
-// Выбор предложения
-function selectSuggestion(suggestion) {
-    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
-    const dropdown = document.getElementById('autocomplete-dropdown');
-    
-    nameInput.value = suggestion;
-    dropdown.classList.add('d-none');
-    currentFocus = -1;
-    
-    // Фокус на следующее поле
-    nameInput.blur();
-}
-
-// Установка активного элемента
-function setActiveItem(items) {
-    items.forEach((item, index) => {
-        if (index === currentFocus) {
-            item.classList.add('active');
+    selectedTagIds.forEach(tagId => {
+        // Ищем чекбокс с таким ID
+        const checkbox = document.getElementById(`tag_${tagId}`);
+        
+        if (checkbox) {
+            checkbox.checked = true;
+            restoredCount++;
+            console.log(`✓ Тег ${tagId} успешно отмечен`);
         } else {
-            item.classList.remove('active');
+            notFoundCount++;
+            console.warn(`✗ Чекбокс для тега ${tagId} не найден в DOM`);
         }
     });
+    
+    console.log(`=== Результат восстановления: ${restoredCount} успешно, ${notFoundCount} не найдено ===`);
+    
+    // Обновляем отображение выбранных тегов
+    setTimeout(() => {
+        updateSelectedTags();
+        console.log('UI обновлен');
+    }, 100);
 }
 
-// Функции для работы с тегами (аналогично add_product.html)
+// Функция загрузки структуры тегов
 function completeTagsLoading() {
     const container = document.getElementById('hierarchicalTags');
     
+    console.log('Загружаем структуру тегов через API...');
+    
     fetch('{% url "tag_structure_api" %}')
-        .then(response => response.json())
+        .then(response => {
+            console.log('Получен ответ от API тегов');
+            return response.json();
+        })
         .then(data => {
+            console.log('Данные тегов загружены, строим HTML...');
             const html = displayHierarchicalTags(data.tree);
             container.innerHTML = html || '<div class="text-muted text-center p-3">Теги не найдены</div>';
             
+            console.log('HTML тегов вставлен в DOM');
+            
             // Инициализируем все группы как раскрытые
             const groups = container.querySelectorAll('.tag-group-content');
+            console.log(`Найдено групп для раскрытия: ${groups.length}`);
+            
             groups.forEach(group => {
                 group.style.maxHeight = group.scrollHeight + 'px';
             });
             
-            // Восстанавливаем выбранные теги
-            restoreSelectedTags();
+            // ВАЖНО: Восстанавливаем теги после того, как DOM полностью загружен
+            setTimeout(() => {
+                console.log('DOM тегов полностью готов, начинаем восстановление...');
+                restoreSelectedTags();
+            }, 300);
         })
         .catch(error => {
-            console.error('Ошибка загрузки тегов:', error);
+            console.error('✗ Ошибка загрузки тегов:', error);
             container.innerHTML = '<div class="text-danger text-center p-3">Ошибка загрузки структуры тегов</div>';
         });
 }
 
-// Сохранение выбранных тегов из формы Django
-function saveCurrentlySelectedTags() {
-    selectedTagIds = [];
-    {% for choice in form.tags %}
-        {% if choice.tag.checked %}
-            selectedTagIds.push({{ choice.choice_value }});
-        {% endif %}
-    {% endfor %}
-}
-
-// Восстановление выбранных тегов
-function restoreSelectedTags() {
-    selectedTagIds.forEach(tagId => {
-        const checkbox = document.getElementById(`tag_${tagId}`);
-        if (checkbox) {
-            checkbox.checked = true;
-        }
-    });
-    updateSelectedTags();
-}
-
-// Все остальные функции как в add_product.html
+// Функции отображения тегов
 function displayHierarchicalTags(tags, level = 0) {
     let html = '';
     
@@ -647,11 +610,9 @@ function filterTags() {
         
         if (tagName.includes(searchTerm) || label.includes(searchTerm)) {
             option.classList.remove('hidden');
-            // Показываем родительскую группу
             const parentGroup = option.closest('.hierarchical-tag-group');
             if (parentGroup) {
                 parentGroup.style.display = 'block';
-                // Раскрываем группу
                 const content = parentGroup.querySelector('.tag-group-content');
                 if (content && content.classList.contains('collapsed')) {
                     toggleTagGroup(content.id);
@@ -662,7 +623,6 @@ function filterTags() {
         }
     });
     
-    // Скрываем пустые группы
     if (searchTerm) {
         tagGroups.forEach(group => {
             const visibleOptions = group.querySelectorAll('.tag-option:not(.hidden)');
@@ -673,7 +633,6 @@ function filterTags() {
             }
         });
     } else {
-        // Если поиск очищен, показываем все группы
         tagGroups.forEach(group => {
             group.style.display = 'block';
         });
@@ -684,7 +643,6 @@ function updateSelectedTags() {
     const selectedTags = document.getElementById('selectedTags');
     const checkboxes = document.querySelectorAll('.tag-option input[type="checkbox"]:checked');
     
-    // Очищаем контейнер
     selectedTags.innerHTML = '';
     
     if (checkboxes.length === 0) {
@@ -692,7 +650,6 @@ function updateSelectedTags() {
         return;
     }
     
-    // Добавляем выбранные теги
     checkboxes.forEach(function(checkbox) {
         const label = checkbox.parentElement.querySelector('label');
         const tagName = label.textContent.trim();
@@ -710,88 +667,6 @@ function updateSelectedTags() {
         selectedTags.appendChild(tagElement);
     });
 }
-
-// Новая функция для автоматического выбора родительских тегов
-function selectParentTags(tagCheckbox) {
-    // Получаем данные о теге из API
-    const tagId = tagCheckbox.value;
-    
-    fetch('{% url "tag_structure_api" %}')
-        .then(response => response.json())
-        .then(data => {
-            // Находим выбранный тег в структуре
-            const selectedTag = findTagInTree(data.tree, parseInt(tagId));
-            if (selectedTag) {
-                // Выбираем всех родителей
-                selectParentsRecursively(selectedTag, data.tree);
-            }
-        })
-        .catch(error => {
-            console.error('Ошибка получения структуры тегов:', error);
-        });
-}
-
-// Функция для поиска тега в дереве
-function findTagInTree(tree, tagId) {
-    for (let tag of tree) {
-        if (tag.id === tagId) {
-            return tag;
-        }
-        if (tag.children && tag.children.length > 0) {
-            const found = findTagInTree(tag.children, tagId);
-            if (found) {
-                return found;
-            }
-        }
-    }
-    return null;
-}
-
-// Функция для рекурсивного выбора родителей
-function selectParentsRecursively(tag, fullTree) {
-    // Находим родителя этого тега
-    const parent = findParentOfTag(fullTree, tag.id);
-    if (parent) {
-        // Выбираем родительский чекбокс
-        const parentCheckbox = document.getElementById(`tag_${parent.id}`);
-        if (parentCheckbox && !parentCheckbox.checked) {
-            parentCheckbox.checked = true;
-            // Рекурсивно выбираем родителей родителя
-            selectParentsRecursively(parent, fullTree);
-        }
-    }
-}
-
-// Функция для поиска родителя тега
-function findParentOfTag(tree, tagId, parent = null) {
-    for (let tag of tree) {
-        if (tag.id === tagId) {
-            return parent;
-        }
-        if (tag.children && tag.children.length > 0) {
-            const found = findParentOfTag(tag.children, tagId, tag);
-            if (found) {
-                return found;
-            }
-        }
-    }
-    return null;
-}
-
-// Обновляем обработчик изменения чекбоксов
-document.addEventListener('DOMContentLoaded', function() {
-    // Добавляем обработчики для всех чекбоксов тегов
-    setTimeout(() => {
-        document.querySelectorAll('.tag-option input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                    selectParentTags(this);
-                }
-                updateSelectedTags();
-            });
-        });
-    }, 1000);
-});
 
 function removeTag(checkboxId) {
     const checkbox = document.getElementById(checkboxId);
@@ -848,12 +723,10 @@ function setupPhotoUpload() {
     const previewContainer = document.getElementById('previewContainer');
     const imagePreview = document.getElementById('imagePreview');
 
-    // Клик по области загрузки
     dropArea.addEventListener('click', () => {
         fileInput.click();
     });
 
-    // Drag & Drop
     dropArea.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropArea.classList.add('dragover');
@@ -873,14 +746,12 @@ function setupPhotoUpload() {
         }
     });
 
-    // Выбор файла
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
             handleImageFile(e.target.files[0]);
         }
     });
 
-    // Вставка из буфера обмена
     document.addEventListener('paste', (e) => {
         const items = e.clipboardData.items;
         for (let item of items) {
@@ -899,18 +770,15 @@ function handleImageFile(file) {
     const imagePreview = document.getElementById('imagePreview');
     const fileInput = document.getElementById('photoInput');
     
-    // Создаем DataTransfer для установки файла в input
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     fileInput.files = dataTransfer.files;
 
-    // Показываем предварительный просмотр
     const reader = new FileReader();
     reader.onload = (e) => {
         imagePreview.src = e.target.result;
         previewContainer.style.display = 'block';
         
-        // Скрываем текст загрузки
         document.querySelector('.drop-content h6').style.display = 'none';
         document.querySelector('.drop-content p').style.display = 'none';
         document.querySelector('.drop-content i').style.display = 'none';
@@ -925,7 +793,6 @@ function clearImage() {
     fileInput.value = '';
     previewContainer.style.display = 'none';
     
-    // Показываем текст загрузки обратно
     document.querySelector('.drop-content h6').style.display = 'block';
     document.querySelector('.drop-content p').style.display = 'block';
     document.querySelector('.drop-content i').style.display = 'block';
@@ -938,7 +805,6 @@ function setupMarkdownEditor() {
 
     if (!textarea) return;
 
-    // Обновление предварительного просмотра
     function updatePreview() {
         const text = textarea.value;
         if (!text.trim()) {
@@ -946,7 +812,6 @@ function setupMarkdownEditor() {
             return;
         }
         
-        // Простая конвертация Markdown в HTML (базовые элементы)
         let html = text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -955,20 +820,16 @@ function setupMarkdownEditor() {
             .replace(/\n\n/g, '</p><p>')
             .replace(/\n/g, '<br>');
         
-        // Оборачиваем в параграфы
         if (!html.includes('<p>')) {
             html = '<p>' + html + '</p>';
         }
         
-        // Обрабатываем списки
         html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
         
         preview.innerHTML = html;
     }
 
     textarea.addEventListener('input', updatePreview);
-    
-    // Инициализация
     updatePreview();
 }
 
@@ -982,34 +843,150 @@ function insertMarkdown(before, after) {
     
     textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
     
-    // Устанавливаем курсор
     const newCursorPos = start + before.length + selectedText.length;
     textarea.setSelectionRange(newCursorPos, newCursorPos);
     textarea.focus();
     
-    // Обновляем предварительный просмотр
     textarea.dispatchEvent(new Event('input'));
+}
+
+// Функции для автозаполнения названий
+let autocompleteTimeout;
+let currentFocus = -1;
+
+function setupProductNameAutocomplete() {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    
+    if (!nameInput || !dropdown) return;
+    
+    nameInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        clearTimeout(autocompleteTimeout);
+        
+        if (query.length < 2) {
+            dropdown.classList.add('d-none');
+            return;
+        }
+        
+        autocompleteTimeout = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    });
+    
+    nameInput.addEventListener('keydown', function(e) {
+        const items = dropdown.querySelectorAll('.autocomplete-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocus++;
+            if (currentFocus >= items.length) currentFocus = 0;
+            setActiveItem(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocus--;
+            if (currentFocus < 0) currentFocus = items.length - 1;
+            setActiveItem(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentFocus > -1 && items[currentFocus]) {
+                selectSuggestion(items[currentFocus].textContent);
+            }
+        } else if (e.key === 'Escape') {
+            dropdown.classList.add('d-none');
+            currentFocus = -1;
+        }
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!nameInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('d-none');
+        }
+    });
+}
+
+function fetchSuggestions(query) {
+    fetch(`/superuser/api/product-name-autocomplete/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            displaySuggestions(data.suggestions);
+        })
+        .catch(error => {
+            console.error('Ошибка автозаполнения:', error);
+        });
+}
+
+function displaySuggestions(suggestions) {
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    dropdown.innerHTML = '';
+    currentFocus = -1;
+    
+    if (suggestions.length === 0) {
+        dropdown.classList.add('d-none');
+        return;
+    }
+    
+    suggestions.forEach(suggestion => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = suggestion;
+        item.addEventListener('click', () => selectSuggestion(suggestion));
+        dropdown.appendChild(item);
+    });
+    
+    dropdown.classList.remove('d-none');
+}
+
+function selectSuggestion(suggestion) {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    
+    nameInput.value = suggestion;
+    dropdown.classList.add('d-none');
+    currentFocus = -1;
+    nameInput.blur();
+}
+
+function setActiveItem(items) {
+    items.forEach((item, index) => {
+        if (index === currentFocus) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
 }
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Сохраняем текущие выбранные теги
-    saveCurrentlySelectedTags();
+    console.log('╔════════════════════════════════════════════════════╗');
+    console.log('║   ИНИЦИАЛИЗАЦИЯ РЕДАКТИРОВАНИЯ ТОВАРА             ║');
+    console.log('╚════════════════════════════════════════════════════╝');
     
-    // Инициализация автозаполнения названий
+    // ШАГ 1: Собираем существующие теги
+    console.log('\n[ШАГ 1] Сбор существующих тегов товара...');
+    collectExistingTags();
+    
+    // ШАГ 2: Инициализация автозаполнения
+    console.log('\n[ШАГ 2] Настройка автозаполнения названий...');
     setupProductNameAutocomplete();
     
-    // Загрузка структуры тегов
+    // ШАГ 3: Загрузка структуры тегов
+    console.log('\n[ШАГ 3] Запуск загрузки структуры тегов...');
     completeTagsLoading();
     
-    // Инициализация загрузки фото
+    // ШАГ 4: Инициализация загрузки фото
+    console.log('\n[ШАГ 4] Настройка загрузки фото...');
     setupPhotoUpload();
     
-    // Инициализация редактора Markdown
+    // ШАГ 5: Инициализация Markdown
+    console.log('\n[ШАГ 5] Настройка Markdown редактора...');
     setupMarkdownEditor();
     
-    // Добавляем кнопки быстрого управления тегами
+    // ШАГ 6: Кнопки управления
     setTimeout(() => {
+        console.log('\n[ШАГ 6] Добавление кнопок управления...');
         const controlsHtml = `
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="btn-group btn-group-sm" role="group">
@@ -1035,26 +1012,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tagsSelection) {
             tagsSelection.insertAdjacentHTML('beforebegin', controlsHtml);
         }
-    }, 1000);
+    }, 1500);
     
-    // Добавляем быстрые клавиши для поиска
-    document.getElementById('tagSearch').addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            this.value = '';
-            filterTags();
-        }
-    });
+    const tagSearchInput = document.getElementById('tagSearch');
+    if (tagSearchInput) {
+        tagSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                this.value = '';
+                filterTags();
+            }
+        });
+        
+        tagSearchInput.addEventListener('focus', function() {
+            this.select();
+        });
+    }
     
-    // Очистка поиска при фокусе на поле
-    document.getElementById('tagSearch').addEventListener('focus', function() {
-        this.select();
-    });
-    
-    // Показываем подсказку по автозаполнению
     const nameInput = document.getElementById('{{ form.name.id_for_label }}');
     if (nameInput) {
         nameInput.setAttribute('placeholder', 'Название товара...');
     }
+    
+    console.log('\n╔════════════════════════════════════════════════════╗');
+    console.log('║   ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА                         ║');
+    console.log('╚════════════════════════════════════════════════════╝\n');
 });
 </script>
 {% endblock %}

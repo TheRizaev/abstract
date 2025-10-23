@@ -25,6 +25,7 @@ from django.db.models import Q, Case, When, IntegerField, Value, F
 from django.db.models.functions import Length
 import re
 import logging
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def product_list(request):
     # Получаем параметры поиска и фильтрации
     search_query = request.GET.get('search', '').strip()
     tag_filter = request.GET.get('tag', '')
+    page_number = request.GET.get('page', 1)
     
     # Сортировка тегов
     sort_preference = request.session.get('tag_sort_preference', 'order')
@@ -50,7 +52,7 @@ def product_list(request):
     selected_tag = None
     selected_tag_children = []
     products = Product.objects.all()
-    search_type = 'all'  # all, smart, tag, smart_tag
+    search_type = 'all'
     
     # Обработка поиска - ВСЕГДА используем умный поиск
     if search_query:
@@ -59,7 +61,6 @@ def product_list(request):
             smart_products = smart_search_service.smart_search(search_query)
             
             if smart_products:
-                # Преобразуем в список для совместимости с остальным кодом
                 products = smart_products
                 search_type = 'smart'
                 logger.info(f"Умный поиск вернул {len(products)} товаров")
@@ -70,7 +71,6 @@ def product_list(request):
                 
         except Exception as e:
             logger.error(f"Ошибка умного поиска: {e}")
-            # Fallback к улучшенному обычному поиску
             expanded_query = smart_search_service.expand_search_query(search_query)
             products = Product.objects.filter(
                 Q(name__icontains=search_query) | 
@@ -78,7 +78,7 @@ def product_list(request):
                 Q(description__icontains=search_query) |
                 Q(name__icontains=expanded_query) |
                 Q(description__icontains=expanded_query)
-            ).distinct().order_by('name')
+            ).distinct().order_by('-created_at')  # ИЗМЕНЕНО: сортировка по дате
             search_type = 'fallback'
             messages.warning(request, 'Умный поиск временно недоступен, используется расширенный поиск.')
     
@@ -90,43 +90,48 @@ def product_list(request):
             all_tags = [selected_tag] + descendant_tags
             
             if search_query:
-                # Если был умный поиск, фильтруем результаты по тегам
                 if isinstance(products, list):
-                    # Если это список из умного поиска
                     filtered_products = []
                     for product in products:
                         if any(tag in product.tags.all() for tag in all_tags):
                             filtered_products.append(product)
                     products = filtered_products
                 else:
-                    # Если это QuerySet
                     products = products.filter(tags__in=all_tags).distinct()
             else:
-                # Обычная фильтрация по тегам
-                products = Product.objects.filter(tags__in=all_tags).distinct().order_by('name')
+                products = Product.objects.filter(tags__in=all_tags).distinct().order_by('-created_at')  # ИЗМЕНЕНО
             
             search_type = 'tag' if not search_query else f'{search_type}_tag'
             
-            # Получаем дочерние теги для отображения
             if sort_preference == 'alphabetical':
                 selected_tag_children = selected_tag.get_children().order_by('name')
             elif sort_preference == 'creation_date':
                 selected_tag_children = selected_tag.get_children().order_by('id')
-            else:  # order
+            else:
                 selected_tag_children = selected_tag.get_children().order_by('order', 'name')
         except Tag.DoesNotExist:
             pass
     
-    # Если нет поиска и фильтров, сортируем по имени
+    # ИЗМЕНЕНО: Если нет поиска и фильтров, показываем последние добавленные
     if not search_query and not tag_filter:
-        products = Product.objects.all().order_by('name')
+        products = Product.objects.all().order_by('-created_at')  # По дате создания, новые сначала
         search_type = 'all'
     
+    # НОВОЕ: Пагинация - 30 товаров на страницу
+    paginator = Paginator(products, 30)
+    
+    try:
+        products_page = paginator.page(page_number)
+    except PageNotAnInteger:
+        products_page = paginator.page(1)
+    except EmptyPage:
+        products_page = paginator.page(paginator.num_pages)
+    
     # Подсчет результатов
-    products_count = len(products) if isinstance(products, list) else products.count()
+    products_count = paginator.count
     
     context = {
-        'products': products,
+        'products': products_page,  # ИЗМЕНЕНО: передаем объект страницы
         'root_tags': root_tags,
         'selected_tag': tag_filter,
         'selected_tag_obj': selected_tag,
@@ -134,6 +139,9 @@ def product_list(request):
         'search_query': search_query,
         'search_type': search_type,
         'products_count': products_count,
+        'paginator': paginator,  # НОВОЕ
+        'page_obj': products_page,  # НОВОЕ
+        'is_paginated': paginator.num_pages > 1,  # НОВОЕ
     }
     
     return render(request, 'rental/product_list.html', context)
@@ -449,22 +457,14 @@ def download_order_pdf(request, order_id):
     
     # Регистрируем шрифты из папки static/fonts/
     try:
-        # Путь к папке со шрифтами
         fonts_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
         
-        # Список возможных имен файлов шрифтов
-        font_files = [
-            'TT.ttf'
-        ]
-        
-        bold_font_files = [
-            'TTB.ttf'
-        ]
+        font_files = ['TT.ttf']
+        bold_font_files = ['TTB.ttf']
         
         font_registered = False
         bold_font_registered = False
         
-        # Пытаемся зарегистрировать обычный шрифт
         for font_file in font_files:
             font_path = os.path.join(fonts_dir, font_file)
             if os.path.exists(font_path):
@@ -477,7 +477,6 @@ def download_order_pdf(request, order_id):
                     print(f"Ошибка регистрации шрифта {font_file}: {e}")
                     continue
         
-        # Пытаемся зарегистрировать жирный шрифт
         for bold_font_file in bold_font_files:
             bold_font_path = os.path.join(fonts_dir, bold_font_file)
             if os.path.exists(bold_font_path):
@@ -490,7 +489,6 @@ def download_order_pdf(request, order_id):
                     print(f"Ошибка регистрации жирного шрифта {bold_font_file}: {e}")
                     continue
         
-        # Устанавливаем имена шрифтов
         if font_registered:
             font_name = 'CustomFont'
         else:
@@ -505,7 +503,6 @@ def download_order_pdf(request, order_id):
             
     except Exception as e:
         print(f"Общая ошибка при работе со шрифтами: {e}")
-        # Fallback к встроенным шрифтам
         font_name = 'Times-Roman'
         font_name_bold = 'Times-Bold'
     
@@ -531,6 +528,25 @@ def download_order_pdf(request, order_id):
         textColor=colors.HexColor('#34495e')
     )
     
+    # НОВЫЙ: Стиль для текста в ячейках таблицы с переносом
+    cell_style = ParagraphStyle(
+        'CellStyle',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=8,  # Уменьшенный размер
+        leading=10,  # Межстрочный интервал
+        wordWrap='CJK'  # Перенос слов
+    )
+    
+    cell_style_bold = ParagraphStyle(
+        'CellStyleBold',
+        parent=styles['Normal'],
+        fontName=font_name_bold,
+        fontSize=8,
+        leading=10,
+        wordWrap='CJK'
+    )
+    
     normal_style = ParagraphStyle(
         'CustomNormal',
         parent=styles['Normal'],
@@ -550,31 +566,49 @@ def download_order_pdf(request, order_id):
     # Информация о заявке
     story.append(Paragraph("ИНФОРМАЦИЯ О ЗАЯВКЕ", header_style))
     
+    # ИЗМЕНЕНО: Используем Paragraph для всех ячеек
     info_data = [
-        ['Дата создания:', order.created_at.strftime('%d.%m.%Y %H:%M')],
-        ['Период аренды:', f"{order.rental_start.strftime('%d.%m.%Y')} - {order.rental_end.strftime('%d.%m.%Y')}"],
-        ['Контактное лицо:', order.contact_person],
-        ['Телефон:', order.phone1],
-        ['Статус заявки:', order.get_status_display()],
-        ['Статус оплаты:', order.get_payment_status_display()],
+        [Paragraph('Дата создания:', cell_style_bold), 
+         Paragraph(order.created_at.strftime('%d.%m.%Y %H:%M'), cell_style)],
+        [Paragraph('Период аренды:', cell_style_bold), 
+         Paragraph(f"{order.rental_start.strftime('%d.%m.%Y')} - {order.rental_end.strftime('%d.%m.%Y')}", cell_style)],
+        [Paragraph('Контактное лицо:', cell_style_bold), 
+         Paragraph(order.contact_person, cell_style)],
+        [Paragraph('Телефон:', cell_style_bold), 
+         Paragraph(order.phone1, cell_style)],
+        [Paragraph('Статус заявки:', cell_style_bold), 
+         Paragraph(order.get_status_display(), cell_style)],
+        [Paragraph('Статус оплаты:', cell_style_bold), 
+         Paragraph(order.get_payment_status_display(), cell_style)],
     ]
     
     if order.phone2:
-        info_data.insert(4, ['Телефон 2:', order.phone2])
+        info_data.insert(4, [Paragraph('Телефон 2:', cell_style_bold), 
+                            Paragraph(order.phone2, cell_style)])
+    
+    if order.production_name:
+        info_data.insert(3, [Paragraph('Продакшен:', cell_style_bold), 
+                            Paragraph(order.production_name, cell_style)])
+    
+    if order.project_name:
+        info_data.insert(4, [Paragraph('Проект:', cell_style_bold), 
+                            Paragraph(order.project_name, cell_style)])
     
     if order.comment:
-        info_data.insert(-2, ['Комментарий:', order.get_display_comment()])
+        # Обрабатываем многострочный комментарий
+        comment_text = order.comment.replace('\n', '<br/>')
+        info_data.insert(-2, [Paragraph('Комментарий:', cell_style_bold), 
+                             Paragraph(comment_text, cell_style)])
     
     if order.created_by_admin:
-        info_data.insert(-2, ['Создана администратором:', 'Да'])
+        info_data.insert(-2, [Paragraph('Создана администратором:', cell_style_bold), 
+                             Paragraph('Да', cell_style)])
     
-    # Таблица с информацией (увеличиваем размеры)
+    # Таблица с информацией
     info_table = Table(info_data, colWidths=[5*cm, 13*cm])
     info_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), font_name),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('FONTNAME', (0, 0), (0, -1), font_name_bold),
-        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
@@ -590,56 +624,73 @@ def download_order_pdf(request, order_id):
     # Товары
     story.append(Paragraph("ТОВАРЫ В ЗАЯВКЕ", header_style))
     
-    # Заголовки таблицы товаров
-    items_data = [['№', 'Наименование', 'Артикул', 'Штрих-код', 'Кол-во', 'Цена/период', 'Сумма', 'Место']]
+    # Заголовки таблицы товаров с Paragraph
+    items_data = [[
+        Paragraph('№', cell_style_bold),
+        Paragraph('Наименование', cell_style_bold),
+        Paragraph('Артикул', cell_style_bold),
+        Paragraph('Штрих-код', cell_style_bold),
+        Paragraph('Кол-во', cell_style_bold),
+        Paragraph('Цена/период', cell_style_bold),
+        Paragraph('Сумма', cell_style_bold),
+        Paragraph('Место', cell_style_bold)
+    ]]
     
     total_sum = 0
     for i, item in enumerate(order.items.all(), 1):
         item_total = item.price * item.quantity
         total_sum += item_total
         
-        # Обрезаем длинные названия
+        # Обрезаем длинные названия и используем Paragraph
         name = item.product.get_display_name()
-        if len(name) > 20:
-            name = name[:20] + '...'
+        if len(name) > 25:
+            name = name[:25] + '...'
         
         items_data.append([
-            str(i),
-            name,
-            item.product.article,
-            getattr(item.product, 'barcode', '-'),  # Добавляем штрих-код
-            f"{item.quantity} шт.",
-            f"{item.price:.0f} сум",
-            f"{item_total:.0f} сум",
-            str(item.product.shelf)
+            Paragraph(str(i), cell_style),
+            Paragraph(name, cell_style),
+            Paragraph(item.product.article, cell_style),
+            Paragraph(getattr(item.product, 'barcode', '-'), cell_style),
+            Paragraph(f"{item.quantity} шт.", cell_style),
+            Paragraph(f"{item.price:.0f} сум", cell_style),
+            Paragraph(f"{item_total:.0f} сум", cell_style),
+            Paragraph(str(item.product.shelf), cell_style)
         ])
     
     # Добавляем итоговую строку
-    items_data.append(['', '', '', '', '', 'ИТОГО:', f"{order.total_amount:.0f} сум", ''])
+    items_data.append([
+        Paragraph('', cell_style),
+        Paragraph('', cell_style),
+        Paragraph('', cell_style),
+        Paragraph('', cell_style),
+        Paragraph('', cell_style),
+        Paragraph('ИТОГО:', cell_style_bold),
+        Paragraph(f"{order.total_amount:.0f} сум", cell_style_bold),
+        Paragraph('', cell_style)
+    ])
     
-    # Увеличиваем размеры таблицы товаров для штрих-кода
-    items_table = Table(items_data, colWidths=[0.8*cm, 3.5*cm, 2*cm, 2.5*cm, 1.5*cm, 2.2*cm, 2.2*cm, 1.8*cm])
+    # Оптимизированные размеры колонок
+    items_table = Table(items_data, colWidths=[0.7*cm, 3.5*cm, 2*cm, 2.2*cm, 1.3*cm, 2*cm, 2*cm, 1.5*cm])
     items_table.setStyle(TableStyle([
         # Заголовок
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('FONTNAME', (0, 0), (-1, 0), font_name_bold),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         
         # Содержимое
         ('FONTNAME', (0, 1), (-1, -2), font_name),
-        ('FONTSIZE', (0, 1), (-1, -2), 7),
-        ('ALIGN', (0, 1), (0, -2), 'CENTER'),  # Номера по центру
-        ('ALIGN', (2, 1), (-1, -2), 'CENTER'),  # Числа и коды по центру
+        ('ALIGN', (0, 1), (0, -2), 'CENTER'),  # Номера
+        ('ALIGN', (2, 1), (-1, -2), 'CENTER'),  # Числа и коды
         ('ALIGN', (1, 1), (1, -2), 'LEFT'),    # Названия слева
         
         # Итоговая строка
         ('FONTNAME', (0, -1), (-1, -1), font_name_bold),
-        ('FONTSIZE', (0, -1), (-1, -1), 10),
+        ('FONTSIZE', (0, -1), (-1, -1), 9),
         ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
         ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecf0f1')),
-        ('SPAN', (0, -1), (5, -1)),  # Объединяем ячейки для "ИТОГО"
+        ('SPAN', (0, -1), (5, -1)),
         
         # Сетка
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
@@ -658,21 +709,26 @@ def download_order_pdf(request, order_id):
     # Дополнительная информация
     story.append(Paragraph("ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ", header_style))
     
-    # Рассчитываем количество дней аренды
     rental_days = (order.rental_end - order.rental_start).days + 1
     
     additional_info = [
-        ['Количество дней аренды:', f"{rental_days} дн."],
-        ['Средняя стоимость в день:', f"{order.total_amount / rental_days:.0f} сум/день"],
-        ['Общая сумма:', f"{order.total_amount:.0f} сум"],
+        [Paragraph('Количество дней аренды:', cell_style_bold), 
+         Paragraph(f"{rental_days} дн.", cell_style)],
+        [Paragraph('Средняя стоимость в день:', cell_style_bold), 
+         Paragraph(f"{order.total_amount / rental_days:.0f} сум/день", cell_style)],
+        [Paragraph('Общая сумма:', cell_style_bold), 
+         Paragraph(f"{order.total_amount:.0f} сум", cell_style)],
     ]
+    
+    if order.deposit_amount > 0:
+        additional_info.insert(2, [Paragraph('Сумма залога:', cell_style_bold), 
+                                  Paragraph(f"{order.deposit_amount:.0f} сум", cell_style)])
     
     additional_table = Table(additional_info, colWidths=[6*cm, 8*cm])
     additional_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), font_name),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('FONTNAME', (0, 0), (0, -1), font_name_bold),
-        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
@@ -710,7 +766,6 @@ def download_order_pdf(request, order_id):
         from reportlab.pdfgen import canvas
         p = canvas.Canvas(buffer, pagesize=A4)
         
-        # Простой текстовый PDF
         p.setFont("Helvetica-Bold", 16)
         p.drawString(50, 800, f"ЗАЯВКА НА АРЕНДУ ОБОРУДОВАНИЯ № {order.id}")
         
@@ -731,7 +786,7 @@ def download_order_pdf(request, order_id):
         y -= 20
         
         for i, item in enumerate(order.items.all(), 1):
-            if y < 50:  # Проверяем, не достигли ли низа страницы
+            if y < 50:
                 p.showPage()
                 y = 800
             p.drawString(70, y, f"{i}. {item.product.name} - {item.quantity} шт. - {item.get_total()} сум")

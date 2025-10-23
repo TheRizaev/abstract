@@ -351,8 +351,18 @@
     100% { transform: scale(1); }
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
+/* Скрытие стрелок в поле ввода числа */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
     .main-product-image,
@@ -378,9 +388,13 @@
 
 {% block extra_js %}
 <script>
+// ===== ВАЖНО: Все функции должны быть объявлены ДО использования =====
+
 // Безопасная инициализация переменных
 const dailyPrice = parseFloat('{{ product.daily_price|floatformat:2|safe }}') || 0;
 const maxQuantity = parseInt('{{ product.available_quantity|floatformat:0|safe }}') || 1;
+
+// === ОПРЕДЕЛЕНИЕ ВСЕХ ФУНКЦИЙ В НАЧАЛЕ ===
 
 // Изменение количества кнопками +/-
 function changeQuantity(delta) {
@@ -409,6 +423,7 @@ function updateButtonStates() {
     const quantityInput = document.getElementById('quantity');
     const decreaseBtn = document.getElementById('decreaseBtn');
     const increaseBtn = document.getElementById('increaseBtn');
+    
     if (!quantityInput || !decreaseBtn || !increaseBtn) {
         console.error('Required elements not found');
         return;
@@ -429,6 +444,7 @@ function updateButtonStates() {
 function updateTotalPrice() {
     const quantityInput = document.getElementById('quantity');
     const totalPriceElement = document.getElementById('totalPrice');
+    
     if (!quantityInput || !totalPriceElement) {
         console.error('Required elements for price update not found');
         return;
@@ -567,6 +583,8 @@ function updateCartCounter() {
     .catch(error => console.error('Error updating cart counter:', error));
 }
 
+// === ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ СОБЫТИЙ ===
+
 // Обработчики событий
 document.addEventListener('DOMContentLoaded', function() {
     const quantityInput = document.getElementById('quantity');
@@ -583,25 +601,25 @@ document.addEventListener('DOMContentLoaded', function() {
     updateButtonStates();
     setupFormListener();
 
-    // Обработчики для кнопок
-    decreaseBtn.addEventListener('click', (e) => {
+    // Обработчики для кнопок + и -
+    decreaseBtn.addEventListener('click', function(e) {
         e.preventDefault();
         changeQuantity(-1);
     });
 
-    increaseBtn.addEventListener('click', (e) => {
+    increaseBtn.addEventListener('click', function(e) {
         e.preventDefault();
         changeQuantity(1);
     });
 
     // Обработчик ввода в поле
-    quantityInput.addEventListener('input', () => {
+    quantityInput.addEventListener('input', function() {
         updateTotalPrice();
         updateButtonStates();
     });
 
     // Валидация при потере фокуса
-    quantityInput.addEventListener('blur', () => {
+    quantityInput.addEventListener('blur', function() {
         let value = parseInt(quantityInput.value) || 1;
         quantityInput.value = Math.max(1, Math.min(value, maxQuantity));
         updateTotalPrice();
@@ -609,7 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Обработчик клавиш стрелок
-    quantityInput.addEventListener('keydown', (e) => {
+    quantityInput.addEventListener('keydown', function(e) {
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             changeQuantity(1);
@@ -621,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Обработка клавиш для быстрого изменения количества
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', function(e) {
     if (document.activeElement.tagName !== 'INPUT') {
         if (e.key === '+' || e.key === '=') {
             e.preventDefault();
