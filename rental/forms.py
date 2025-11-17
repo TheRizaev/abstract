@@ -68,7 +68,7 @@ class OrderForm(forms.ModelForm):
         model = Order
         fields = [
             'contact_person', 'phone1', 'phone2', 'production_name', 'project_name',
-            'rental_start', 'rental_end', 'comment', 'deposit_amount', 'discount_code'
+            'rental_start', 'rental_days', 'comment', 'deposit_amount', 'discount_code'
         ]
         widgets = {
             'contact_person': forms.TextInput(attrs={
@@ -95,9 +95,11 @@ class OrderForm(forms.ModelForm):
                 'class': 'form-control',
                 'type': 'date'
             }),
-            'rental_end': forms.DateInput(attrs={
+            'rental_days': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'type': 'date'
+                'min': '1',
+                'max': '365',
+                'value': '1'
             }),
             'comment': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -150,14 +152,3 @@ class OrderForm(forms.ModelForm):
             except DiscountCode.DoesNotExist:
                 raise forms.ValidationError("Неверный код скидки или код неактивен")
         return code
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        rental_start = cleaned_data.get('rental_start')
-        rental_end = cleaned_data.get('rental_end')
-        
-        if rental_start and rental_end:
-            if rental_end < rental_start:
-                raise forms.ValidationError("Дата окончания не может быть раньше даты начала аренды")
-        
-        return cleaned_data

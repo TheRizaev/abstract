@@ -145,13 +145,12 @@ class Product(models.Model):
                 return barcode
     
     def save(self, *args, **kwargs):
-        self.name = self.name.strip().lower()
+        self.name = self.name.strip()
         
-        # Если штрих-код не указан, генерируем его
         if not self.barcode:
             self.barcode = self.generate_ean13_barcode()
         
-        if not self.pk:  # Если это новый товар (еще не сохранен в БД)
+        if not self.pk:
             self.available_quantity = self.quantity
 
         # Артикул всегда равен штрих-коду
@@ -164,7 +163,7 @@ class Product(models.Model):
 
     def get_display_name(self):
         """Возвращает название с заглавной буквы"""
-        return self.name.capitalize()
+        return self.name
     
     def get_display_description(self):
         """Возвращает описание с заглавной буквы"""
@@ -217,7 +216,8 @@ class Order(models.Model):
     production_name = models.CharField(max_length=200, blank=True, verbose_name="Название продакшена")
     project_name = models.CharField(max_length=200, blank=True, verbose_name="Название проекта")
     rental_start = models.DateField(verbose_name="Дата начала аренды")
-    rental_end = models.DateField(verbose_name="Дата окончания аренды")
+    rental_days = models.PositiveIntegerField(default=1, verbose_name="Количество дней аренды")
+    rental_end = models.DateField(verbose_name="Дата окончания аренды", null=True, blank=True)
     comment = models.TextField(blank=True, verbose_name="Комментарий")
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending', verbose_name="Статус")
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='unpaid', verbose_name="Статус оплаты")
@@ -255,10 +255,11 @@ class Order(models.Model):
         return ""
     
     def get_rental_days(self):
-        """Возвращает количество дней аренды"""
-        if self.rental_start and self.rental_end:
+        if self.rental_days:
+            return self.rental_days
+        elif self.rental_start and self.rental_end:
             return (self.rental_end - self.rental_start).days + 1
-        return 0
+        return 1
     
     def get_daily_average(self):
         """Возвращает среднюю стоимость за день"""
@@ -280,6 +281,16 @@ class Order(models.Model):
         self.total_before_discount = self.total_amount
         self.discount_amount = (self.total_amount * self.discount_percent) / 100
         self.total_amount = self.get_final_total()
+        
+    def save(self, *args, **kwargs):
+        if self.rental_start and self.rental_days:
+            from datetime import timedelta
+            self.rental_end = self.rental_start + timedelta(days=self.rental_days - 1)
+        
+        elif self.rental_start and self.rental_end:
+            self.rental_days = (self.rental_end - self.rental_start).days + 1
+        
+        super().save(*args, **kwargs)
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', verbose_name='Заявка')

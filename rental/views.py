@@ -299,29 +299,30 @@ def checkout(request):
         return redirect('rental:cart')
     
     if request.method == 'POST':
-        # Передаем пользователя в форму для определения доступности поля deposit_amount
         form = OrderForm(request.POST, user=request.user)
         if form.is_valid():
             order = form.save(commit=False)
             
-            # ИСПРАВЛЕНО: Правильный расчет общей суммы
-            total = 0
-            rental_days = (order.rental_end - order.rental_start).days + 1
+            # ИЗМЕНЕНО: Используем rental_days вместо расчета разницы дат
+            rental_days = order.rental_days or 1
             
+            # Рассчитываем rental_end автоматически
+            from datetime import timedelta
+            order.rental_end = order.rental_start + timedelta(days=rental_days - 1)
+            
+            # Расчет суммы
+            total = 0
             for product_id, item_data in cart.items():
                 try:
                     product = Product.objects.get(id=product_id)
                     
                     if isinstance(item_data, int):
                         quantity = item_data
-                        days = rental_days  # Используем дни из формы заказа
                     else:
                         quantity = item_data.get('quantity', 1)
-                        # Игнорируем дни из корзины, используем дни из заказа
-                        days = rental_days
                     
                     # Правильный расчет: цена за день * количество * дни аренды
-                    item_total = product.daily_price * quantity * days
+                    item_total = product.daily_price * quantity * rental_days
                     total += item_total
                 except Product.DoesNotExist:
                     pass
@@ -336,7 +337,6 @@ def checkout(request):
             
             order.created_by_admin = request.user.is_staff if request.user.is_authenticated else False
             
-            # Если заявка создается админом, автоматически подтверждаем
             if order.created_by_admin:
                 order.status = 'confirmed'
             
@@ -352,15 +352,13 @@ def checkout(request):
                     else:
                         quantity = item_data.get('quantity', 1)
                     
-                    # ИСПРАВЛЕНО: Цена указывается за единицу товара за весь период аренды из заказа
                     OrderItem.objects.create(
                         order=order,
                         product=product,
                         quantity=quantity,
-                        price=product.daily_price * rental_days  # Цена за единицу за весь период
+                        price=product.daily_price * rental_days
                     )
                     
-                    # Если заявка подтверждена, списываем товар
                     if order.status == 'confirmed':
                         product.available_quantity -= quantity
                         product.save()
@@ -368,13 +366,11 @@ def checkout(request):
                 except Product.DoesNotExist:
                     pass
             
-            # Очищаем корзину
             request.session['cart'] = {}
             
             messages.success(request, 'Заявка успешно создана!')
             return redirect('rental:order_success', order_id=order.id)
     else:
-        # Передаем пользователя в форму и при GET запросе
         form = OrderForm(user=request.user)
     
     # ИСПРАВЛЕНО: Подготавливаем данные корзины для отображения с правильным расчетом
@@ -440,364 +436,214 @@ def download_order_pdf(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     
     # Импорты для PDF
+    from io import BytesIO
+    from datetime import timedelta
+    from django.utils import timezone
+    from django.http import HttpResponse
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.pdfbase import pdfmetrics
-    from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
+    import os
     from django.conf import settings
-    
-    # Создаем PDF
+
+    # Буфер PDF
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=1.5*cm, leftMargin=1.5*cm, 
-                           topMargin=2*cm, bottomMargin=2*cm)
-    
-    # Регистрируем шрифты из папки static/fonts/
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1*cm,
+        leftMargin=1*cm,
+        topMargin=1.2*cm,
+        bottomMargin=1.2*cm
+    )
+
+    # Подключение шрифтов
     try:
         fonts_dir = os.path.join(settings.BASE_DIR, 'static', 'fonts')
-        
-        font_files = ['TT.ttf']
-        bold_font_files = ['TTB.ttf']
-        
-        font_registered = False
-        bold_font_registered = False
-        
-        for font_file in font_files:
-            font_path = os.path.join(fonts_dir, font_file)
-            if os.path.exists(font_path):
-                try:
-                    pdfmetrics.registerFont(TTFont('CustomFont', font_path))
-                    font_registered = True
-                    print(f"Зарегистрирован шрифт: {font_file}")
-                    break
-                except Exception as e:
-                    print(f"Ошибка регистрации шрифта {font_file}: {e}")
-                    continue
-        
-        for bold_font_file in bold_font_files:
-            bold_font_path = os.path.join(fonts_dir, bold_font_file)
-            if os.path.exists(bold_font_path):
-                try:
-                    pdfmetrics.registerFont(TTFont('CustomFont-Bold', bold_font_path))
-                    bold_font_registered = True
-                    print(f"Зарегистрирован жирный шрифт: {bold_font_file}")
-                    break
-                except Exception as e:
-                    print(f"Ошибка регистрации жирного шрифта {bold_font_file}: {e}")
-                    continue
-        
-        if font_registered:
-            font_name = 'CustomFont'
-        else:
-            font_name = 'Times-Roman'
-            print("Используется встроенный шрифт Times-Roman")
-            
-        if bold_font_registered:
-            font_name_bold = 'CustomFont-Bold'
-        else:
-            font_name_bold = 'Times-Bold'
-            print("Используется встроенный жирный шрифт Times-Bold")
-            
-    except Exception as e:
-        print(f"Общая ошибка при работе со шрифтами: {e}")
-        font_name = 'Times-Roman'
-        font_name_bold = 'Times-Bold'
-    
-    # Стили с поддержкой кириллицы
+        font_path = os.path.join(fonts_dir, 'TT.ttf')
+        bold_font_path = os.path.join(fonts_dir, 'TTB.ttf')
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont('CustomFont', font_path))
+        if os.path.exists(bold_font_path):
+            pdfmetrics.registerFont(TTFont('CustomFont', bold_font_path))
+        font_name = 'CustomFont'
+    except Exception:
+        font_name = 'Helvetica'
+
+    # Стили
     styles = getSampleStyleSheet()
-    
+
     title_style = ParagraphStyle(
-        'CustomTitle',
+        'Title',
         parent=styles['Heading1'],
-        fontName=font_name_bold,
-        fontSize=18,
-        spaceAfter=20,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor('#2c3e50')
-    )
-    
-    header_style = ParagraphStyle(
-        'CustomHeader',
-        parent=styles['Heading2'],
-        fontName=font_name_bold,
-        fontSize=14,
-        spaceAfter=12,
-        textColor=colors.HexColor('#34495e')
-    )
-    
-    # НОВЫЙ: Стиль для текста в ячейках таблицы с переносом
-    cell_style = ParagraphStyle(
-        'CellStyle',
-        parent=styles['Normal'],
         fontName=font_name,
-        fontSize=8,  # Уменьшенный размер
-        leading=10,  # Межстрочный интервал
-        wordWrap='CJK'  # Перенос слов
+        fontSize=13,
+        leading=15,
+        alignment=TA_CENTER,
+        spaceAfter=8
     )
-    
-    cell_style_bold = ParagraphStyle(
-        'CellStyleBold',
-        parent=styles['Normal'],
-        fontName=font_name_bold,
-        fontSize=8,
-        leading=10,
-        wordWrap='CJK'
-    )
-    
-    normal_style = ParagraphStyle(
-        'CustomNormal',
+
+    header_style = ParagraphStyle(
+        'Header',
         parent=styles['Normal'],
         fontName=font_name,
         fontSize=10,
-        spaceAfter=4
+        leading=12,
+        spaceBefore=10,
+        spaceAfter=5,
+        alignment=TA_LEFT
     )
-    
-    # Элементы документа
+
+    # Стиль для ячеек с переносом текста
+    cell_style = ParagraphStyle(
+        'Cell',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=6,
+        leading=10,
+        wordWrap='CJK'  # Включаем перенос текста
+    )
+
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=8,
+        alignment=TA_RIGHT,
+        textColor=colors.grey
+    )
+
     story = []
-    
+
     # Заголовок
-    title_text = f"ЗАЯВКА НА АРЕНДУ ОБОРУДОВАНИЯ № {order.id}"
-    story.append(Paragraph(title_text, title_style))
-    story.append(Spacer(1, 15))
-    
-    # Информация о заявке
-    story.append(Paragraph("ИНФОРМАЦИЯ О ЗАЯВКЕ", header_style))
-    
-    # ИЗМЕНЕНО: Используем Paragraph для всех ячеек
+    story.append(Paragraph(f"ЗАЯВКА НА АРЕНДУ ОБОРУДОВАНИЯ № {order.id}", title_style))
+    story.append(Spacer(1, 4))
+
+    # Информация о заявке - ИСПОЛЬЗУЕМ Paragraph для переноса текста
+    story.append(Paragraph("ИНФОРМАЦИЯ О ЗАЯВКЕ:", header_style))
+
     info_data = [
-        [Paragraph('Дата создания:', cell_style_bold), 
-         Paragraph(order.created_at.strftime('%d.%m.%Y %H:%M'), cell_style)],
-        [Paragraph('Период аренды:', cell_style_bold), 
-         Paragraph(f"{order.rental_start.strftime('%d.%m.%Y')} - {order.rental_end.strftime('%d.%m.%Y')}", cell_style)],
-        [Paragraph('Контактное лицо:', cell_style_bold), 
-         Paragraph(order.contact_person, cell_style)],
-        [Paragraph('Телефон:', cell_style_bold), 
-         Paragraph(order.phone1, cell_style)],
-        [Paragraph('Статус заявки:', cell_style_bold), 
-         Paragraph(order.get_status_display(), cell_style)],
-        [Paragraph('Статус оплаты:', cell_style_bold), 
-         Paragraph(order.get_payment_status_display(), cell_style)],
+        [Paragraph('Дата создания:', cell_style), Paragraph(order.created_at.strftime('%d.%m.%Y %H:%M'), cell_style)],
+        [Paragraph('Период аренды:', cell_style), Paragraph(f"{order.rental_start.strftime('%d.%m.%Y')} - {order.rental_end.strftime('%d.%m.%Y')}", cell_style)],
+        [Paragraph('Контактное лицо:', cell_style), Paragraph(order.contact_person, cell_style)],
+        [Paragraph('Продавец:', cell_style), Paragraph(order.production_name or '—', cell_style)],
+        [Paragraph('Проект:', cell_style), Paragraph(order.project_name or '—', cell_style)],
+        [Paragraph('Телефон:', cell_style), Paragraph(order.phone1, cell_style)],
+        [Paragraph('Статус заявки:', cell_style), Paragraph(order.get_status_display(), cell_style)],
+        [Paragraph('Статус оплаты:', cell_style), Paragraph(order.get_payment_status_display(), cell_style)],
     ]
-    
-    if order.phone2:
-        info_data.insert(4, [Paragraph('Телефон 2:', cell_style_bold), 
-                            Paragraph(order.phone2, cell_style)])
-    
-    if order.production_name:
-        info_data.insert(3, [Paragraph('Продакшен:', cell_style_bold), 
-                            Paragraph(order.production_name, cell_style)])
-    
-    if order.project_name:
-        info_data.insert(4, [Paragraph('Проект:', cell_style_bold), 
-                            Paragraph(order.project_name, cell_style)])
-    
-    if order.comment:
-        # Обрабатываем многострочный комментарий
-        comment_text = order.comment.replace('\n', '<br/>')
-        info_data.insert(-2, [Paragraph('Комментарий:', cell_style_bold), 
-                             Paragraph(comment_text, cell_style)])
-    
+
     if order.created_by_admin:
-        info_data.insert(-2, [Paragraph('Создана администратором:', cell_style_bold), 
-                             Paragraph('Да', cell_style)])
-    
-    # Таблица с информацией
-    info_table = Table(info_data, colWidths=[5*cm, 13*cm])
+        info_data.append([Paragraph('Создана администратором:', cell_style), Paragraph('Да', cell_style)])
+    if order.comment:
+        comment_text = order.comment.replace('\n', '<br/>')
+        info_data.append([Paragraph('Комментарий:', cell_style), Paragraph(comment_text, cell_style)])
+
+    info_table = Table(info_data, colWidths=[4.5*cm, 12*cm])
     info_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), font_name),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
     ]))
-    
+
     story.append(info_table)
-    story.append(Spacer(1, 20))
-    
-    # Товары
-    story.append(Paragraph("ТОВАРЫ В ЗАЯВКЕ", header_style))
-    
-    # Заголовки таблицы товаров с Paragraph
+    story.append(Spacer(1, 8))
+
+    # Таблица товаров - ИСПОЛЬЗУЕМ Paragraph для переноса текста
+    story.append(Paragraph("ТОВАРЫ В ЗАЯВКЕ:", header_style))
+
     items_data = [[
-        Paragraph('№', cell_style_bold),
-        Paragraph('Наименование', cell_style_bold),
-        Paragraph('Артикул', cell_style_bold),
-        Paragraph('Штрих-код', cell_style_bold),
-        Paragraph('Кол-во', cell_style_bold),
-        Paragraph('Цена/период', cell_style_bold),
-        Paragraph('Сумма', cell_style_bold),
-        Paragraph('Место', cell_style_bold)
+        Paragraph('№', cell_style),
+        Paragraph('Наименование', cell_style),
+        Paragraph('Артикул', cell_style),
+        Paragraph('Штрих-код', cell_style),
+        Paragraph('Кол-во', cell_style),
+        Paragraph('Цена', cell_style),
+        Paragraph('Сумма', cell_style),
+        Paragraph('Место', cell_style)
     ]]
-    
+
     total_sum = 0
     for i, item in enumerate(order.items.all(), 1):
         item_total = item.price * item.quantity
         total_sum += item_total
-        
-        # Обрезаем длинные названия и используем Paragraph
         name = item.product.get_display_name()
-        if len(name) > 25:
-            name = name[:25] + '...'
         
         items_data.append([
             Paragraph(str(i), cell_style),
-            Paragraph(name, cell_style),
+            Paragraph(name, cell_style),  # Без обрезки - будет переноситься автоматически
             Paragraph(item.product.article, cell_style),
-            Paragraph(getattr(item.product, 'barcode', '-'), cell_style),
-            Paragraph(f"{item.quantity} шт.", cell_style),
-            Paragraph(f"{item.price:.0f} сум", cell_style),
-            Paragraph(f"{item_total:.0f} сум", cell_style),
+            Paragraph(getattr(item.product, 'barcode', '—'), cell_style),
+            Paragraph(str(item.quantity), cell_style),
+            Paragraph(f"{item.price:.0f}", cell_style),
+            Paragraph(f"{item_total:.0f}", cell_style),
             Paragraph(str(item.product.shelf), cell_style)
         ])
-    
-    # Добавляем итоговую строку
-    items_data.append([
-        Paragraph('', cell_style),
-        Paragraph('', cell_style),
-        Paragraph('', cell_style),
-        Paragraph('', cell_style),
-        Paragraph('', cell_style),
-        Paragraph('ИТОГО:', cell_style_bold),
-        Paragraph(f"{order.total_amount:.0f} сум", cell_style_bold),
-        Paragraph('', cell_style)
+
+    items_table = Table(items_data, colWidths=[
+        0.8*cm, 5*cm, 2.3*cm, 2.5*cm, 1.3*cm, 2*cm, 2*cm, 1.3*cm
     ])
-    
-    # Оптимизированные размеры колонок
-    items_table = Table(items_data, colWidths=[0.7*cm, 3.5*cm, 2*cm, 2.2*cm, 1.3*cm, 2*cm, 2*cm, 1.5*cm])
     items_table.setStyle(TableStyle([
-        # Заголовок
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('FONTNAME', (0, 0), (-1, 0), font_name_bold),
+        ('FONTNAME', (0, 0), (-1, -1), font_name),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        
-        # Содержимое
-        ('FONTNAME', (0, 1), (-1, -2), font_name),
-        ('ALIGN', (0, 1), (0, -2), 'CENTER'),  # Номера
-        ('ALIGN', (2, 1), (-1, -2), 'CENTER'),  # Числа и коды
-        ('ALIGN', (1, 1), (1, -2), 'LEFT'),    # Названия слева
-        
-        # Итоговая строка
-        ('FONTNAME', (0, -1), (-1, -1), font_name_bold),
-        ('FONTSIZE', (0, -1), (-1, -1), 9),
-        ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecf0f1')),
-        ('SPAN', (0, -1), (5, -1)),
-        
-        # Сетка
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        
-        # Отступы
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('ALIGN', (4, 1), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),  # Изменено на TOP для правильного переноса
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
     ]))
-    
+
     story.append(items_table)
-    story.append(Spacer(1, 20))
-    
-    # Дополнительная информация
-    story.append(Paragraph("ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ", header_style))
-    
+    story.append(Spacer(1, 8))
+
+    # Дополнительная информация - ИСПОЛЬЗУЕМ Paragraph
+    story.append(Paragraph("ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ:", header_style))
     rental_days = (order.rental_end - order.rental_start).days + 1
-    
+
     additional_info = [
-        [Paragraph('Количество дней аренды:', cell_style_bold), 
-         Paragraph(f"{rental_days} дн.", cell_style)],
-        [Paragraph('Средняя стоимость в день:', cell_style_bold), 
-         Paragraph(f"{order.total_amount / rental_days:.0f} сум/день", cell_style)],
-        [Paragraph('Общая сумма:', cell_style_bold), 
-         Paragraph(f"{order.total_amount:.0f} сум", cell_style)],
+        [Paragraph('Количество дней аренды:', cell_style), Paragraph(f"{rental_days} дн.", cell_style)],
+        [Paragraph('Средняя стоимость в день:', cell_style), Paragraph(f"{order.total_amount / rental_days:.0f} сум/день", cell_style)],
+        [Paragraph('Общая сумма:', cell_style), Paragraph(f"{order.total_amount:.0f} сум", cell_style)]
     ]
-    
-    if order.deposit_amount > 0:
-        additional_info.insert(2, [Paragraph('Сумма залога:', cell_style_bold), 
-                                  Paragraph(f"{order.deposit_amount:.0f} сум", cell_style)])
-    
-    additional_table = Table(additional_info, colWidths=[6*cm, 8*cm])
+
+    additional_table = Table(additional_info, colWidths=[6*cm, 9.5*cm])
     additional_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), font_name),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
     ]))
-    
+
     story.append(additional_table)
-    story.append(Spacer(1, 30))
-    
+    story.append(Spacer(1, 12))
+
     # Подпись
-    footer_style = ParagraphStyle(
-        'Footer', 
-        parent=styles['Normal'], 
-        fontSize=8,
-        fontName=font_name,
-        textColor=colors.grey, 
-        alignment=TA_RIGHT
-    )
-    
     footer_text = f"Дата формирования документа: {(timezone.now() + timedelta(hours=5)).strftime('%d.%m.%Y %H:%M')}"
     story.append(Paragraph(footer_text, footer_style))
-    
-    # Генерируем PDF
-    try:
-        doc.build(story)
-        print("PDF успешно создан")
-    except Exception as e:
-        print(f"Ошибка при создании PDF: {e}")
-        # Создаем упрощенный PDF как fallback
-        buffer.seek(0)
-        buffer.truncate()
-        
-        from reportlab.pdfgen import canvas
-        p = canvas.Canvas(buffer, pagesize=A4)
-        
-        p.setFont("Helvetica-Bold", 16)
-        p.drawString(50, 800, f"ЗАЯВКА НА АРЕНДУ ОБОРУДОВАНИЯ № {order.id}")
-        
-        p.setFont("Helvetica", 10)
-        y = 750
-        p.drawString(50, y, f"Дата создания: {order.created_at.strftime('%d.%m.%Y %H:%M')}")
-        y -= 20
-        p.drawString(50, y, f"Контактное лицо: {order.contact_person}")
-        y -= 20
-        p.drawString(50, y, f"Телефон: {order.phone1}")
-        y -= 20
-        p.drawString(50, y, f"Период аренды: {order.rental_start.strftime('%d.%m.%Y')} - {order.rental_end.strftime('%d.%m.%Y')}")
-        y -= 20
-        p.drawString(50, y, f"Общая сумма: {order.total_amount} сум")
-        
-        y -= 40
-        p.drawString(50, y, "ТОВАРЫ:")
-        y -= 20
-        
-        for i, item in enumerate(order.items.all(), 1):
-            if y < 50:
-                p.showPage()
-                y = 800
-            p.drawString(70, y, f"{i}. {item.product.name} - {item.quantity} шт. - {item.get_total()} сум")
-            y -= 15
-        
-        p.save()
-    
+
+    doc.build(story)
     buffer.seek(0)
+
     response = HttpResponse(buffer.read(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="order_{order.id}.pdf"'
-    
+    response['Content-Disposition'] = f'attachment; filename=\"order_{order.id}.pdf\"'
     return response
 
 def update_cart_quantity(request):

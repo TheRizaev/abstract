@@ -37,7 +37,7 @@
                     <tr>
                         <th>№</th>
                         <th>Название проекта</th>
-                        <th>Телефон</th>
+                        <th>Имя</th>
                         <th>Период аренды</th>
                         <th>Сумма</th>
                         <th>Статус</th>
@@ -51,25 +51,25 @@
                     <tr>
                         <td>#{{ order.id }}</td>
                         <td>{{ order.project_name }}</td>
-                        <td>{{ order.phone1 }}</td>
+                        <td>{{ order.contact_person }}</td>
                         <td>{{ order.rental_start|date:"d.m.Y" }} - {{ order.rental_end|date:"d.m.Y" }}</td>
                         <td>{{ order.total_amount|format_price }} сум</td>
                         <td>
                             {% if order.status == 'pending' %}
                                 <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-                                    <i class="fas fa-clock me-1"></i>Ожидает подтверждения
+                                    <i class="fas fa-clock me-1"></i>
                                 </span>
                             {% elif order.status == 'confirmed' %}
                                 <span class="badge bg-info fs-6 px-3 py-2">
-                                    <i class="fas fa-check me-1"></i>Подтверждена
+                                    <i class="fas fa-check me-1"></i>
                                 </span>
                             {% elif order.status == 'completed' %}
                                 <span class="badge bg-success fs-6 px-3 py-2">
-                                    <i class="fas fa-check-circle me-1"></i>Завершена
+                                    <i class="fas fa-check-circle me-1"></i>
                                 </span>
                             {% elif order.status == 'rejected' %}
                                 <span class="badge bg-danger fs-6 px-3 py-2">
-                                    <i class="fas fa-times-circle me-1"></i>Отклонена
+                                    <i class="fas fa-times-circle me-1"></i>
                                 </span>
                             {% endif %}
                         </td>

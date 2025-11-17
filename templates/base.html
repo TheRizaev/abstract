@@ -9,28 +9,30 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            /* Dark theme colors */
-            --primary-color: #2c3e50;
-            --secondary-color: #34495e;
-            --accent-color: #3498db;
-            --background-color: #0d1117;
-            --surface-color: #161b22;
-            --card-color: #21262d;
-            --text-color: #c9d1d9;
-            --text-secondary: #8b949e;
-            --border-color: #30363d;
+            /* Monochrome Black & White theme */
+            --primary-color: #000000;
+            --secondary-color: #1a1a1a;
+            --accent-color: #ffffff;
+            --background-color: #000000;
+            --surface-color: #0a0a0a;
+            --card-color: #121212;
+            --text-color: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border-color: #2a2a2a;
             --header-height: 80px;
             
-            /* Additional dark colors */
-            --gray-dark: #0d1117;
-            --gray-darker: #010409;
-            --blue: #58a6ff;
-            --blue-light: #79c0ff;
-            --purple: #a5a5ff;
-            --green: #7ee787;
-            --orange: #ffab70;
-            --red: #f85149;
-            --yellow: #f0d55c;
+            /* Grayscale palette */
+            --gray-dark: #0d0d0d;
+            --gray-darker: #050505;
+            --gray-100: #f5f5f5;
+            --gray-200: #e0e0e0;
+            --gray-300: #cccccc;
+            --gray-400: #999999;
+            --gray-500: #808080;
+            --gray-600: #666666;
+            --gray-700: #4d4d4d;
+            --gray-800: #333333;
+            --gray-900: #1a1a1a;
         }
 
         * {
@@ -46,7 +48,7 @@
             overflow-x: hidden;
         }
 
-        /* Dust Effect Background */
+        /* Dust Effect Background - Monochrome */
         body::before {
             content: '';
             position: fixed;
@@ -55,9 +57,9 @@
             width: 100%;
             height: 100%;
             background-image: 
-                radial-gradient(circle at 20% 80%, rgba(81, 81, 81, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.25) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(130, 135, 140, 0.2) 0%, transparent 50%);
+                radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.04) 0%, transparent 50%);
             z-index: -2;
             animation: dustAnimation 30s ease-in-out infinite;
         }
@@ -70,16 +72,16 @@
             width: 100%;
             height: 100%;
             background: 
-                radial-gradient(1px 1px at 10px 20px, rgba(255, 255, 255, 0.15), transparent),
-                radial-gradient(1px 1px at 80px 60px, rgba(255, 255, 255, 0.1), transparent),
-                radial-gradient(1px 1px at 150px 100px, rgba(255, 255, 255, 0.12), transparent),
-                radial-gradient(1px 1px at 200px 40px, rgba(255, 255, 255, 0.08), transparent),
-                radial-gradient(1px 1px at 300px 120px, rgba(255, 255, 255, 0.1), transparent),
-                radial-gradient(1px 1px at 400px 80px, rgba(255, 255, 255, 0.05), transparent),
-                radial-gradient(1px 1px at 500px 160px, rgba(255, 255, 255, 0.12), transparent),
-                radial-gradient(1px 1px at 600px 200px, rgba(255, 255, 255, 0.08), transparent),
-                radial-gradient(1px 1px at 50px 180px, rgba(255, 255, 255, 0.1), transparent),
-                radial-gradient(1px 1px at 250px 220px, rgba(255, 255, 255, 0.06), transparent);
+                radial-gradient(1px 1px at 10px 20px, rgba(255, 255, 255, 0.1), transparent),
+                radial-gradient(1px 1px at 80px 60px, rgba(255, 255, 255, 0.08), transparent),
+                radial-gradient(1px 1px at 150px 100px, rgba(255, 255, 255, 0.09), transparent),
+                radial-gradient(1px 1px at 200px 40px, rgba(255, 255, 255, 0.06), transparent),
+                radial-gradient(1px 1px at 300px 120px, rgba(255, 255, 255, 0.08), transparent),
+                radial-gradient(1px 1px at 400px 80px, rgba(255, 255, 255, 0.04), transparent),
+                radial-gradient(1px 1px at 500px 160px, rgba(255, 255, 255, 0.09), transparent),
+                radial-gradient(1px 1px at 600px 200px, rgba(255, 255, 255, 0.06), transparent),
+                radial-gradient(1px 1px at 50px 180px, rgba(255, 255, 255, 0.08), transparent),
+                radial-gradient(1px 1px at 250px 220px, rgba(255, 255, 255, 0.05), transparent);
             background-size: 650px 250px;
             z-index: -1;
             animation: dustFloat 40s linear infinite;
@@ -87,11 +89,11 @@
 
         @keyframes dustAnimation {
             0%, 100% { 
-                opacity: 0.5;
+                opacity: 0.3;
                 transform: translateX(0);
             }
             50% { 
-                opacity: 0.8;
+                opacity: 0.5;
                 transform: translateX(20px);
             }
         }
@@ -117,7 +119,7 @@
         /* Header */
         .navbar {
             background-color: var(--surface-color);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(255, 255, 255, 0.05);
             padding: 1rem 0;
             position: fixed;
             top: 0;
@@ -141,7 +143,7 @@
             height: 35px;
             width: auto;
             transition: transform 0.3s ease;
-            filter: brightness(1.2);
+            filter: brightness(1.2) invert(1);
         }
 
         .logo-img:hover {
@@ -156,9 +158,9 @@
         }
 
         .catalog-btn, .cart-btn {
-            background: linear-gradient(135deg, var(--accent-color), #2980b9);
-            border: none;
-            color: white;
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-300));
+            border: 1px solid var(--gray-300);
+            color: var(--primary-color);
             height: 50px;
             border-radius: 10px;
             display: flex;
@@ -168,7 +170,7 @@
             position: relative;
             text-decoration: none;
             font-weight: 500;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
         }
 
         .catalog-btn {
@@ -182,18 +184,18 @@
         }
 
         .catalog-btn:hover, .cart-btn:hover {
-            background: linear-gradient(135deg, #2980b9, #1f5f8b);
-            color: white;
+            background: linear-gradient(135deg, var(--gray-300), var(--gray-400));
+            color: var(--primary-color);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
         }
 
         .cart-count {
             position: absolute;
             top: -8px;
             right: -8px;
-            background: var(--red);
-            color: white;
+            background: var(--text-color);
+            color: var(--primary-color);
             border-radius: 50%;
             width: 24px;
             height: 24px;
@@ -219,7 +221,7 @@
             background: transparent;
         }
 
-        /* Alert styles */
+        /* Alert styles - Monochrome */
         .alert {
             border: none;
             border-radius: 10px;
@@ -229,43 +231,45 @@
         }
 
         .alert-success {
-            background: rgba(126, 231, 135, 0.1);
-            color: var(--green);
-            border-color: rgba(126, 231, 135, 0.3);
+            background: rgba(245, 245, 245, 0.15);
+            color: var(--gray-100);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         .alert-danger {
-            background: rgba(248, 81, 73, 0.1);
-            color: var(--red);
-            border-color: rgba(248, 81, 73, 0.3);
+            background: rgba(80, 80, 80, 0.2);
+            color: var(--gray-300);
+            border-color: rgba(128, 128, 128, 0.3);
         }
 
         .alert-warning {
-            background: rgba(240, 213, 92, 0.1);
-            color: var(--yellow);
-            border-color: rgba(240, 213, 92, 0.3);
+            background: rgba(153, 153, 153, 0.15);
+            color: var(--gray-200);
+            border-color: rgba(160, 160, 160, 0.3);
         }
 
         .alert-info {
-            background: rgba(88, 166, 255, 0.1);
-            color: var(--blue);
-            border-color: rgba(88, 166, 255, 0.3);
+            background: rgba(224, 224, 224, 0.1);
+            color: var(--gray-100);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent-color), #2980b9);
-            border: none;
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-300));
+            border: 1px solid var(--gray-300);
+            color: var(--primary-color);
             padding: 0.75rem 1.5rem;
             font-weight: 500;
             transition: all 0.3s ease;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #2980b9, #1f5f8b);
+            background: linear-gradient(135deg, var(--gray-300), var(--gray-400));
+            color: var(--primary-color);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
         }
 
         .btn-outline-secondary {
@@ -283,7 +287,7 @@
         .card {
             background: var(--card-color);
             border: 1px solid var(--border-color);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             transition: all 0.3s ease;
             border-radius: 12px;
             backdrop-filter: blur(10px);
@@ -291,7 +295,7 @@
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 30px rgba(255,255,255,0.1);
         }
 
         .card-header {
@@ -316,9 +320,9 @@
 
         .form-control:focus {
             background: var(--surface-color);
-            border-color: var(--accent-color);
+            border-color: var(--gray-400);
             color: var(--text-color);
-            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.15);
         }
 
         .form-control::placeholder {
@@ -333,7 +337,7 @@
 
         .form-select:focus {
             background: var(--surface-color);
-            border-color: var(--accent-color);
+            border-color: var(--gray-400);
             color: var(--text-color);
         }
 
@@ -352,19 +356,19 @@
         }
 
         .text-success {
-            color: var(--green) !important;
+            color: var(--gray-100) !important;
         }
 
         .text-primary {
-            color: var(--blue) !important;
+            color: var(--gray-200) !important;
         }
 
         .text-warning {
-            color: var(--yellow) !important;
+            color: var(--gray-300) !important;
         }
 
         .text-danger {
-            color: var(--red) !important;
+            color: var(--gray-400) !important;
         }
 
         /* Breadcrumb */
@@ -374,12 +378,12 @@
         }
 
         .breadcrumb a {
-            color: var(--blue);
+            color: var(--gray-200);
             text-decoration: none;
         }
 
         .breadcrumb a:hover {
-            color: var(--blue-light);
+            color: var(--gray-100);
         }
 
         /* Mobile adjustments */
@@ -464,23 +468,23 @@
         }
 
         .bg-success {
-            background: var(--green) !important;
+            background: var(--gray-100) !important;
             color: var(--background-color) !important;
         }
 
         .bg-warning {
-            background: var(--yellow) !important;
+            background: var(--gray-400) !important;
             color: var(--background-color) !important;
         }
 
         .bg-danger {
-            background: var(--red) !important;
+            background: var(--gray-600) !important;
             color: white !important;
         }
 
         .bg-info {
-            background: var(--blue) !important;
-            color: white !important;
+            background: var(--gray-200) !important;
+            color: var(--background-color) !important;
         }
 
         /* Scrollbar */
@@ -509,7 +513,7 @@
             <div class="d-flex justify-content-between align-items-center w-100">
                 <!-- Logo -->
                 <a class="navbar-brand" href="{% url 'rental:preview' %}">
-                    <img src="{% static 'images/logo.svg' %}" alt="Логотип" class="logo-img" style="width: 300px">
+                    <img src="{% static '/images/logo.png' %}" alt="Логотип" class="logo-img" style="width: 250px; margin-left: 100px">
                 </a>
                 
                 <!-- Navigation Controls -->

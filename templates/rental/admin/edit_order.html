@@ -356,12 +356,14 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== ИНИЦИАЛИЗАЦИЯ ЗАВЕРШЕНА ===');
 });
 
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ addToCart
 function addToCart(productId) {
-    console.log('Добавление товара в корзину:', productId);
+    console.log('=== ДОБАВЛЕНИЕ ТОВАРА В КОРЗИНУ ===');
+    console.log('ID товара:', productId);
     
     const row = document.querySelector(`tr[data-product-id="${productId}"]`);
     if (!row) {
-        console.error('Строка товара не найдена!');
+        console.error('✗ Строка товара не найдена!');
         alert('Ошибка: товар не найден');
         return;
     }
@@ -369,31 +371,44 @@ function addToCart(productId) {
     const productName = row.dataset.productName;
     const productPrice = parseFloat(row.dataset.productPrice);
     const quantityInput = document.getElementById(`qty-${productId}`);
-    const quantity = parseInt(quantityInput.value);
+    const quantity = parseInt(quantityInput.value) || 1;
     
-    console.log('Данные товара:', { productName, productPrice, quantity });
-    
-    // Получаем реальное доступное количество с учетом товаров в корзине
+    // Получаем доступное количество на складе СЕЙЧАС
     const originalAvailable = parseInt(row.dataset.available);
+    
+    // Находим, сколько этого товара было в ОРИГИНАЛЬНОЙ заявке
+    const currentItemsInOrder = {{ current_items|safe }};
+    const originalInOrder = currentItemsInOrder.find(orderItem => orderItem.product_id === productId);
+    const originalQuantityInOrder = originalInOrder ? originalInOrder.quantity : 0;
+    
+    // Находим, сколько СЕЙЧАС в корзине редактирования
     const existingItem = cart.find(item => item.product_id === productId);
-    const inCart = existingItem ? existingItem.quantity : 0;
-    const actualAvailable = originalAvailable + inCart; // При редактировании товары еще не списались
+    const currentInCart = existingItem ? existingItem.quantity : 0;
     
-    console.log('Доступность:', { originalAvailable, inCart, actualAvailable });
+    // КЛЮЧЕВАЯ ЛОГИКА: При редактировании pending заявки товары НЕ БЫЛИ списаны
+    // Поэтому actualAvailable = available_на_складе + было_в_оригинальной_заявке
+    const actualAvailable = originalAvailable + originalQuantityInOrder;
     
-    if (quantity > actualAvailable - inCart) {
-        alert('Недостаточно товара на складе');
+    console.log('📊 Анализ доступности:');
+    console.log('  - На складе сейчас:', originalAvailable);
+    console.log('  - Было в оригинальной заявке:', originalQuantityInOrder);
+    console.log('  - Реально доступно для этой заявки:', actualAvailable);
+    console.log('  - Уже в корзине редактирования:', currentInCart);
+    console.log('  - Пытаемся добавить:', quantity);
+    console.log('  - Будет в корзине после добавления:', currentInCart + quantity);
+    
+    // Проверяем, можем ли добавить
+    if (currentInCart + quantity > actualAvailable) {
+        const message = `Недостаточно товара!\n\nДоступно для заявки: ${actualAvailable} шт.\nУже в корзине: ${currentInCart} шт.\nПытаетесь добавить: ${quantity} шт.\n\nМаксимум можно добавить: ${actualAvailable - currentInCart} шт.`;
+        console.error('✗', message);
+        alert(message);
         return;
     }
     
-    // Проверяем, есть ли уже этот товар в корзине
+    // Добавляем или обновляем количество
     if (existingItem) {
-        if (existingItem.quantity + quantity > actualAvailable) {
-            alert('Недостаточно товара на складе');
-            return;
-        }
         existingItem.quantity += quantity;
-        console.log('Товар уже был в корзине, обновлено количество:', existingItem.quantity);
+        console.log('✓ Товар уже был в корзине, обновлено количество:', existingItem.quantity);
     } else {
         cart.push({
             product_id: productId,
@@ -401,16 +416,17 @@ function addToCart(productId) {
             price: productPrice,
             quantity: quantity
         });
-        console.log('Товар добавлен в корзину');
+        console.log('✓ Товар добавлен в корзину');
     }
     
     console.log('Текущая корзина:', cart);
+    console.log('=== ТОВАР УСПЕШНО ДОБАВЛЕН ===\n');
     
     updateCartDisplay();
     updateAvailableQuantities();
     updateDepositDisplay();
     
-    showNotification(`Товар "${productName}" добавлен в корзину`, 'success');
+    showNotification(`Товар "${productName}" добавлен в корзину (${quantity} шт.)`, 'success');
 }
 
 function removeFromCart(productId) {
@@ -438,7 +454,7 @@ function changeCartQuantity(productId, delta) {
         return;
     }
     
-    // При редактировании заявки товары еще не списались, поэтому доступное количество = original + current_in_cart
+    // При редактировании заявки товары еще не списались
     const currentItemsInOrder = {{ current_items|safe }};
     const originalInOrder = currentItemsInOrder.find(orderItem => orderItem.product_id === productId);
     const originalQuantityInOrder = originalInOrder ? originalInOrder.quantity : 0;
@@ -446,7 +462,7 @@ function changeCartQuantity(productId, delta) {
     const actualAvailable = originalAvailable + originalQuantityInOrder;
     
     if (newQuantity > actualAvailable) {
-        alert('Недостаточно товара на складе');
+        alert(`Недостаточно товара на складе. Доступно: ${actualAvailable} шт.`);
         return;
     }
     
@@ -554,8 +570,10 @@ function updateDepositDisplay() {
     depositDisplay.textContent = `${formatPrice(depositAmount)} сум`;
 }
 
-// Обновление доступных количеств в таблице товаров
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ updateAvailableQuantities
 function updateAvailableQuantities() {
+    console.log('=== ОБНОВЛЕНИЕ ДОСТУПНЫХ КОЛИЧЕСТВ ===');
+    
     const currentItemsInOrder = {{ current_items|safe }};
     
     document.querySelectorAll('#productsTable tr').forEach(row => {
@@ -572,9 +590,16 @@ function updateAvailableQuantities() {
         const cartItem = cart.find(item => item.product_id === productId);
         const inCart = cartItem ? cartItem.quantity : 0;
         
-        // Поскольку товары при редактировании pending заявки не были списаны,
-        // доступное количество = исходное_на_складе + было_в_заявке - сейчас_в_корзине
+        // ПРАВИЛЬНАЯ ЛОГИКА: Поскольку товары при pending не списались
+        // actualAvailable = original + было_в_заявке - сейчас_в_корзине
         const actualAvailable = originalAvailable + originalQuantityInOrder - inCart;
+        
+        console.log(`Товар ID ${productId}:`, {
+            originalAvailable,
+            originalQuantityInOrder,
+            inCart,
+            actualAvailable
+        });
         
         // Обновляем отображение доступного количества
         const availableQtyElement = row.querySelector('.available-qty');
@@ -584,7 +609,7 @@ function updateAvailableQuantities() {
             availableQtyElement.textContent = actualAvailable;
             
             // Изменяем цвет badge в зависимости от количества
-            availableQtyElement.className = 'badge';
+            availableQtyElement.className = 'badge available-qty';
             if (actualAvailable <= 0) {
                 availableQtyElement.classList.add('bg-danger');
             } else if (actualAvailable <= 2) {
@@ -595,9 +620,9 @@ function updateAvailableQuantities() {
         }
         
         if (quantityInput) {
-            quantityInput.max = actualAvailable;
-            if (quantityInput.value > quantityInput.max) {
-                quantityInput.value = quantityInput.max;
+            quantityInput.max = Math.max(0, actualAvailable);
+            if (parseInt(quantityInput.value) > quantityInput.max) {
+                quantityInput.value = quantityInput.max || 1;
             }
         }
     });
@@ -634,11 +659,6 @@ function submitOrder() {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Сохранение...';
     
     console.log('Отправка формы...');
-    console.log('Данные формы:');
-    const formData = new FormData(form);
-    for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}: ${value}`);
-    }
     
     form.submit();
 }
@@ -665,47 +685,18 @@ function addByArticle() {
     }
     
     const productId = parseInt(row.dataset.productId);
-    const productName = row.dataset.productName;
-    const productPrice = parseFloat(row.dataset.productPrice);
-    const originalAvailable = parseInt(row.dataset.available);
     
-    // Получаем количество, которое было в исходной заявке
-    const currentItemsInOrder = {{ current_items|safe }};
-    const originalInOrder = currentItemsInOrder.find(orderItem => orderItem.product_id === productId);
-    const originalQuantityInOrder = originalInOrder ? originalInOrder.quantity : 0;
-    
-    // Проверяем доступность
-    const existingItem = cart.find(item => item.product_id === productId);
-    const currentInCart = existingItem ? existingItem.quantity : 0;
-    const actualAvailable = originalAvailable + originalQuantityInOrder;
-    
-    if (currentInCart >= actualAvailable) {
-        alert('Товар недоступен для добавления (недостаточно на складе)');
-        return;
+    // Устанавливаем количество 1 для быстрого добавления
+    const quantityInput = document.getElementById(`qty-${productId}`);
+    if (quantityInput) {
+        quantityInput.value = 1;
     }
     
     // Добавляем товар
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        cart.push({
-            product_id: productId,
-            name: productName,
-            price: productPrice,
-            quantity: 1
-        });
-    }
+    addToCart(productId);
     
     // Очищаем поле ввода
     articleInput.value = '';
-    
-    // Обновляем отображение
-    updateCartDisplay();
-    updateAvailableQuantities();
-    updateDepositDisplay();
-    
-    // Показываем уведомление
-    showNotification(`Товар "${productName}" добавлен в корзину`, 'success');
 }
 
 function searchProducts() {

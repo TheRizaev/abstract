@@ -74,11 +74,12 @@
                             {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label for="{{ form.rental_end.id_for_label }}" class="form-label">Дата окончания аренды</label>
-                            {{ form.rental_end }}
-                            {% if form.rental_end.errors %}
-                                <div class="text-danger">{{ form.rental_end.errors }}</div>
+                            <label for="{{ form.rental_days.id_for_label }}" class="form-label">Количество дней аренды</label>
+                            {{ form.rental_days }}
+                            {% if form.rental_days.errors %}
+                                <div class="text-danger">{{ form.rental_days.errors }}</div>
                             {% endif %}
+                            <small class="form-text text-muted">От 1 до 365 дней</small>
                         </div>
                         <div class="col-12">
                             <div class="alert alert-info" id="rentalDaysInfo" style="display: none;">
@@ -207,7 +208,7 @@
 }
 
 .cart-item:hover {
-    background-color: #f8f9fa;
+    background-color: #ffffff;
 }
 
 #grandTotal {
@@ -404,30 +405,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Добавляем обработчики событий на изменение дат
     const startDateInput = document.getElementById('{{ form.rental_start.id_for_label }}');
-    const endDateInput = document.getElementById('{{ form.rental_end.id_for_label }}');
+    const daysInput = document.getElementById('{{ form.rental_days.id_for_label }}');
     
-    if (startDateInput && endDateInput) {
+    if (startDateInput && daysInput) {
         startDateInput.addEventListener('change', calculateRentalDays);
-        endDateInput.addEventListener('change', calculateRentalDays);
+        daysInput.addEventListener('input', calculateRentalDays);
         
-        // Устанавливаем минимальную дату - сегодня
         const today = new Date().toISOString().split('T')[0];
         startDateInput.setAttribute('min', today);
-        
-        // При изменении даты начала, обновляем минимальную дату окончания
-        startDateInput.addEventListener('change', function() {
-            if (this.value) {
-                endDateInput.setAttribute('min', this.value);
-                // Если дата окончания меньше даты начала, сбрасываем её
-                if (endDateInput.value && endDateInput.value < this.value) {
-                    endDateInput.value = this.value;
-                }
-            }
-        });
     }
     
-    // Если даты уже выбраны (например, при возврате с ошибкой валидации), рассчитываем
-    if (startDateInput && endDateInput && startDateInput.value && endDateInput.value) {
+    if (startDateInput && daysInput && startDateInput.value && daysInput.value) {
         calculateRentalDays();
     }
 
@@ -437,27 +425,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function calculateRentalDays() {
     const startDateInput = document.getElementById('{{ form.rental_start.id_for_label }}');
-    const endDateInput = document.getElementById('{{ form.rental_end.id_for_label }}');
+    const daysInput = document.getElementById('{{ form.rental_days.id_for_label }}');
     
-    if (!startDateInput.value || !endDateInput.value) {
+    if (!startDateInput.value || !daysInput.value) {
         document.getElementById('rentalDaysInfo').style.display = 'none';
         document.getElementById('grandTotal').textContent = formatPrice(dailyTotal) + ' сум';
-        document.getElementById('totalCalculation').textContent = 'Выберите даты аренды для расчета итоговой суммы';
+        document.getElementById('totalCalculation').textContent = 'Выберите дату и количество дней аренды';
         hideDiscountDisplay();
         updateItemsDisplay(1);
         return;
     }
     
-    const startDate = new Date(startDateInput.value);
-    const endDate = new Date(endDateInput.value);
-    
-    // Рассчитываем количество дней (включая первый и последний день)
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    const daysDiff = parseInt(daysInput.value) || 1;
     
     if (daysDiff < 1) {
-        alert('Дата окончания должна быть позже или равна дате начала');
-        endDateInput.value = startDateInput.value;
+        alert('Количество дней должно быть больше 0');
+        daysInput.value = 1;
         return;
     }
     
@@ -477,10 +460,8 @@ function calculateRentalDays() {
         grandTotal = subtotal - discountAmount;
         appliedDiscount.amount = discountAmount;
         
-        // Показываем детализацию скидки
         showDiscountDisplay(subtotal, discountAmount);
     } else {
-        // Скрываем детализацию скидки
         hideDiscountDisplay();
     }
     
@@ -502,10 +483,9 @@ function calculateRentalDays() {
     
     document.getElementById('totalCalculation').innerHTML = calculationText;
     
-    // Обновляем отображение каждого товара
     updateItemsDisplay(daysDiff);
     
-    // Добавляем анимацию для привлечения внимания
+    // Анимация
     const grandTotalElement = document.getElementById('grandTotal');
     grandTotalElement.style.transition = 'all 0.3s ease';
     grandTotalElement.style.transform = 'scale(1.1)';

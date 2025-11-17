@@ -9,29 +9,41 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
+        .hero-logo {
+            filter: none !important;
+        }
+
+
+        .hero .logo-img {
+            width: 600px;
+            height: auto;
+            image-rendering: crisp-edges; /* сохраняет чёткость */
+            }
         :root {
-            /* Dark theme colors - same as base.html */
-            --primary-color: #2c3e50;
-            --secondary-color: #34495e;
-            --accent-color: #3498db;
-            --background-color: #0d1117;
-            --surface-color: #161b22;
-            --card-color: #21262d;
-            --text-color: #c9d1d9;
-            --text-secondary: #8b949e;
-            --border-color: #30363d;
+            /* Monochrome Black & White theme */
+            --primary-color: #000000;
+            --secondary-color: #1a1a1a;
+            --accent-color: #ffffff;
+            --background-color: #000000;
+            --surface-color: #0a0a0a;
+            --card-color: #121212;
+            --text-color: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border-color: #2a2a2a;
             --header-height: 80px;
             
-            /* Additional dark colors */
-            --gray-dark: #0d1117;
-            --gray-darker: #010409;
-            --blue: #58a6ff;
-            --blue-light: #79c0ff;
-            --purple: #a5a5ff;
-            --green: #7ee787;
-            --orange: #ffab70;
-            --red: #f85149;
-            --yellow: #f0d55c;
+            /* Grayscale palette */
+            --gray-dark: #0d0d0d;
+            --gray-darker: #050505;
+            --gray-100: #f5f5f5;
+            --gray-200: #e0e0e0;
+            --gray-300: #cccccc;
+            --gray-400: #999999;
+            --gray-500: #808080;
+            --gray-600: #666666;
+            --gray-700: #4d4d4d;
+            --gray-800: #333333;
+            --gray-900: #1a1a1a;
         }
 
         * {
@@ -50,7 +62,7 @@
             position: relative;
         }
 
-        /* Background Effects - same as base.html */
+        /* Background Effects - Monochrome dust */
         body::before {
             content: '';
             position: fixed;
@@ -59,9 +71,9 @@
             width: 100%;
             height: 100%;
             background-image: 
-                radial-gradient(circle at 20% 80%, rgba(120, 192, 255, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(165, 165, 255, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(88, 166, 255, 0.2) 0%, transparent 50%);
+                radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.04) 0%, transparent 50%);
             z-index: -2;
             animation: dustAnimation 30s ease-in-out infinite;
         }
@@ -74,16 +86,16 @@
             width: 100%;
             height: 100%;
             background: 
-                radial-gradient(1px 1px at 10px 20px, rgba(255, 255, 255, 0.15), transparent),
-                radial-gradient(1px 1px at 80px 60px, rgba(255, 255, 255, 0.1), transparent),
-                radial-gradient(1px 1px at 150px 100px, rgba(255, 255, 255, 0.12), transparent),
-                radial-gradient(1px 1px at 200px 40px, rgba(255, 255, 255, 0.08), transparent),
-                radial-gradient(1px 1px at 300px 120px, rgba(255, 255, 255, 0.1), transparent),
-                radial-gradient(1px 1px at 400px 80px, rgba(255, 255, 255, 0.05), transparent),
-                radial-gradient(1px 1px at 500px 160px, rgba(255, 255, 255, 0.12), transparent),
-                radial-gradient(1px 1px at 600px 200px, rgba(255, 255, 255, 0.08), transparent),
-                radial-gradient(1px 1px at 50px 180px, rgba(255, 255, 255, 0.1), transparent),
-                radial-gradient(1px 1px at 250px 220px, rgba(255, 255, 255, 0.06), transparent);
+                radial-gradient(1px 1px at 10px 20px, rgba(255, 255, 255, 0.1), transparent),
+                radial-gradient(1px 1px at 80px 60px, rgba(255, 255, 255, 0.08), transparent),
+                radial-gradient(1px 1px at 150px 100px, rgba(255, 255, 255, 0.09), transparent),
+                radial-gradient(1px 1px at 200px 40px, rgba(255, 255, 255, 0.06), transparent),
+                radial-gradient(1px 1px at 300px 120px, rgba(255, 255, 255, 0.08), transparent),
+                radial-gradient(1px 1px at 400px 80px, rgba(255, 255, 255, 0.04), transparent),
+                radial-gradient(1px 1px at 500px 160px, rgba(255, 255, 255, 0.09), transparent),
+                radial-gradient(1px 1px at 600px 200px, rgba(255, 255, 255, 0.06), transparent),
+                radial-gradient(1px 1px at 50px 180px, rgba(255, 255, 255, 0.08), transparent),
+                radial-gradient(1px 1px at 250px 220px, rgba(255, 255, 255, 0.05), transparent);
             background-size: 650px 250px;
             z-index: -1;
             animation: dustFloat 40s linear infinite;
@@ -91,11 +103,11 @@
 
         @keyframes dustAnimation {
             0%, 100% { 
-                opacity: 0.5;
+                opacity: 0.3;
                 transform: translateX(0);
             }
             50% { 
-                opacity: 0.8;
+                opacity: 0.5;
                 transform: translateX(20px);
             }
         }
@@ -118,10 +130,10 @@
             }
         }
 
-        /* Header - same as base.html */
+        /* Header */
         .navbar {
             background-color: var(--surface-color);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(255, 255, 255, 0.05);
             padding: 1rem 0;
             position: fixed;
             top: 0;
@@ -145,7 +157,7 @@
             height: 35px;
             width: auto;
             transition: transform 0.3s ease;
-            filter: brightness(1.2);
+            filter: brightness(1.2) invert(1);
         }
 
         .logo-img:hover {
@@ -160,9 +172,9 @@
         }
 
         .catalog-btn, .cart-btn {
-            background: linear-gradient(135deg, var(--accent-color), #2980b9);
-            border: none;
-            color: white;
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-300));
+            border: 1px solid var(--gray-300);
+            color: var(--primary-color);
             height: 50px;
             border-radius: 10px;
             display: flex;
@@ -171,8 +183,8 @@
             transition: all 0.3s ease;
             position: relative;
             text-decoration: none;
-            font-weight: 500;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
         }
 
         .catalog-btn {
@@ -186,18 +198,18 @@
         }
 
         .catalog-btn:hover, .cart-btn:hover {
-            background: linear-gradient(135deg, #2980b9, #1f5f8b);
-            color: white;
+            background: linear-gradient(135deg, var(--gray-300), var(--gray-400));
+            color: var(--primary-color);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
         }
 
         .cart-count {
             position: absolute;
             top: -8px;
             right: -8px;
-            background: var(--red);
-            color: white;
+            background: var(--text-color);
+            color: var(--primary-color);
             border-radius: 50%;
             width: 24px;
             height: 24px;
@@ -223,7 +235,7 @@
             background: transparent;
         }
 
-        /* Animated Background Objects - Enhanced */
+        /* Animated Background Objects - Monochrome */
         .floating-objects {
             position: fixed;
             top: 0;
@@ -237,7 +249,7 @@
 
         .floating-object {
             position: absolute;
-            opacity: 0.2;
+            opacity: 0.15;
             animation: floatAround 25s linear infinite;
         }
 
@@ -248,14 +260,14 @@
 
         .floating-object.circle {
             border-radius: 50%;
-            border: 2px solid var(--blue);
-            background: radial-gradient(circle, rgba(88, 166, 255, 0.1), transparent);
+            border: 2px solid var(--gray-400);
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05), transparent);
         }
 
         .floating-object.square {
-            border: 2px solid var(--purple);
+            border: 2px solid var(--gray-500);
             transform: rotate(45deg);
-            background: linear-gradient(45deg, rgba(165, 165, 255, 0.1), transparent);
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.05), transparent);
         }
 
         .floating-object.triangle {
@@ -263,19 +275,19 @@
             height: 0;
             border-left: 20px solid transparent;
             border-right: 20px solid transparent;
-            border-bottom: 35px solid var(--green);
-            filter: blur(1px) drop-shadow(0 0 15px var(--green));
+            border-bottom: 35px solid var(--gray-400);
+            filter: blur(1px) drop-shadow(0 0 15px var(--gray-400));
         }
 
         .floating-object.line {
-            background: linear-gradient(90deg, var(--blue-light), var(--purple), transparent);
+            background: linear-gradient(90deg, var(--gray-300), var(--gray-500), transparent);
             height: 3px;
             border-radius: 2px;
             box-shadow: 0 0 10px currentColor;
         }
 
         .floating-object.glow {
-            background: radial-gradient(circle, var(--blue), transparent);
+            background: radial-gradient(circle, var(--gray-400), transparent);
             border-radius: 50%;
             filter: blur(3px);
             animation: glowPulse 4s ease-in-out infinite;
@@ -287,10 +299,10 @@
                 opacity: 0;
             }
             10% {
-                opacity: 0.3;
+                opacity: 0.2;
             }
             90% {
-                opacity: 0.3;
+                opacity: 0.2;
             }
             100% {
                 transform: translateX(calc(100vw + 100px)) translateY(-100px) rotate(360deg);
@@ -301,15 +313,15 @@
         @keyframes glowPulse {
             0%, 100% { 
                 transform: scale(1);
-                opacity: 0.2;
+                opacity: 0.15;
             }
             50% { 
                 transform: scale(1.5);
-                opacity: 0.4;
+                opacity: 0.25;
             }
         }
 
-        /* Hero Section - Dark theme with enhanced effects */
+        /* Hero Section - Monochrome */
         .hero {
             min-height: 100vh;
             display: flex;
@@ -317,7 +329,7 @@
             justify-content: center;
             text-align: center;
             position: relative;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f172a 100%);
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #0d0d0d 100%);
             overflow: hidden;
         }
 
@@ -329,16 +341,16 @@
             right: 0;
             bottom: 0;
             background: 
-                radial-gradient(circle at 20% 30%, rgba(88, 166, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(165, 165, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(126, 231, 135, 0.1) 0%, transparent 70%);
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 70%);
             z-index: 1;
             animation: heroGlow 8s ease-in-out infinite alternate;
         }
 
         @keyframes heroGlow {
-            0% { opacity: 0.7; }
-            100% { opacity: 1; }
+            0% { opacity: 0.5; }
+            100% { opacity: 0.8; }
         }
 
         .hero-content {
@@ -351,26 +363,26 @@
 
         .hero-title {
             font-family: 'Orbitron', monospace;
-            font-size: clamp(4rem, 12vw, 8rem);
+            font-size: 4rem;
             font-weight: 900;
             line-height: 1;
-            margin-bottom: 2rem;
-            background: linear-gradient(45deg, var(--blue-light), var(--purple), var(--blue));
+            margin-bottom: 3rem;
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-400), var(--gray-100));
             background-size: 200% 200%;
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: titleGlow 3s ease-in-out infinite alternate, gradientShift 6s ease-in-out infinite;
             letter-spacing: 0.1em;
-            text-shadow: 0 0 30px rgba(88, 166, 255, 0.5);
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
         }
 
         @keyframes titleGlow {
             0% { 
-                filter: drop-shadow(0 0 20px rgba(88, 166, 255, 0.5));
+                filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
             }
             100% { 
-                filter: drop-shadow(0 0 40px rgba(165, 165, 255, 0.8));
+                filter: drop-shadow(0 0 40px rgba(255, 255, 255, 0.5));
             }
         }
 
@@ -388,8 +400,8 @@
             max-width: 800px;
             margin-left: auto;
             margin-right: auto;
-            color: var(--text-color);
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            color: var(--text-secondary);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
         @keyframes fadeInUp {
@@ -398,6 +410,7 @@
         }
 
         .hero-buttons {
+            margin-top: 4rem;
             display: flex;
             gap: 2rem;
             justify-content: center;
@@ -426,7 +439,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             transition: left 0.5s;
         }
 
@@ -435,30 +448,30 @@
         }
 
         .hero-button.primary {
-            background: linear-gradient(45deg, var(--blue), var(--purple));
-            color: white;
-            border-color: var(--blue);
-            box-shadow: 0 4px 15px rgba(88, 166, 255, 0.4);
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-300));
+            color: var(--primary-color);
+            border-color: var(--gray-100);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
         }
 
         .hero-button.primary:hover {
-            background: linear-gradient(45deg, var(--purple), var(--blue-light));
-            color: white;
-            box-shadow: 0 8px 25px rgba(88, 166, 255, 0.6);
+            background: linear-gradient(45deg, var(--gray-300), var(--gray-400));
+            color: var(--primary-color);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
             transform: translateY(-5px);
         }
 
         .hero-button.secondary {
             background: transparent;
-            color: var(--blue-light);
-            border-color: var(--blue-light);
-            box-shadow: 0 4px 15px rgba(121, 192, 255, 0.2);
+            color: var(--gray-100);
+            border-color: var(--gray-100);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
         }
 
         .hero-button.secondary:hover {
-            background: linear-gradient(45deg, var(--blue-light), var(--blue));
-            color: var(--background-color);
-            box-shadow: 0 8px 25px rgba(121, 192, 255, 0.4);
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-300));
+            color: var(--primary-color);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
             transform: translateY(-5px);
         }
 
@@ -476,7 +489,7 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--blue), transparent);
+            background: linear-gradient(90deg, transparent, var(--gray-400), transparent);
         }
 
         .container {
@@ -497,7 +510,7 @@
             font-weight: 700;
             margin-bottom: 3rem;
             color: var(--text-color);
-            background: linear-gradient(45deg, var(--blue-light), var(--text-color));
+            background: linear-gradient(45deg, var(--gray-100), var(--text-color));
             background-clip: text;
             -webkit-background-clip: text;
         }
@@ -507,7 +520,7 @@
             line-height: 1.8;
             margin-bottom: 2rem;
             color: var(--text-secondary);
-            text-align: justify;
+            text-align: center;
         }
 
         .company-text strong {
@@ -529,7 +542,7 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--purple), transparent);
+            background: linear-gradient(90deg, transparent, var(--gray-500), transparent);
         }
 
         .section-title {
@@ -539,7 +552,7 @@
             text-align: center;
             margin-bottom: 1rem;
             color: var(--text-color);
-            background: linear-gradient(45deg, var(--blue-light), var(--purple));
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-400));
             background-clip: text;
             -webkit-background-clip: text;
         }
@@ -569,7 +582,7 @@
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
         .feature-card::before {
@@ -579,7 +592,7 @@
             left: -2px;
             right: -2px;
             bottom: -2px;
-            background: linear-gradient(45deg, var(--blue), var(--purple), var(--green), var(--blue));
+            background: linear-gradient(45deg, var(--gray-300), var(--gray-500), var(--gray-400), var(--gray-300));
             background-size: 400% 400%;
             border-radius: 15px;
             z-index: -1;
@@ -594,7 +607,7 @@
 
         .feature-card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 20px 40px rgba(255, 255, 255, 0.1);
         }
 
         @keyframes gradientBorder {
@@ -616,23 +629,23 @@
             align-items: center;
             justify-content: center;
             font-size: 2rem;
-            color: white;
+            color: var(--primary-color);
             margin-bottom: 2rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
             animation: iconFloat 3s ease-in-out infinite;
             position: relative;
         }
 
         .feature-card:nth-child(1) .feature-icon {
-            background: linear-gradient(135deg, var(--blue), var(--blue-light));
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-300));
         }
 
         .feature-card:nth-child(2) .feature-icon {
-            background: linear-gradient(135deg, var(--purple), var(--blue));
+            background: linear-gradient(135deg, var(--gray-200), var(--gray-400));
         }
 
         .feature-card:nth-child(3) .feature-icon {
-            background: linear-gradient(135deg, var(--green), var(--blue));
+            background: linear-gradient(135deg, var(--gray-300), var(--gray-500));
         }
 
         .feature-icon::after {
@@ -646,7 +659,7 @@
             border-radius: 15px;
             z-index: -1;
             filter: blur(10px);
-            opacity: 0.7;
+            opacity: 0.5;
         }
 
         @keyframes iconFloat {
@@ -678,7 +691,7 @@
             text-align: center;
             margin-bottom: 3rem;
             color: var(--text-color);
-            background: linear-gradient(45deg, var(--blue-light), var(--green));
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-400));
             background-clip: text;
             -webkit-background-clip: text;
         }
@@ -696,7 +709,7 @@
             border-radius: 10px;
             text-align: center;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
             position: relative;
             overflow: hidden;
         }
@@ -708,7 +721,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.1), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
             transition: left 0.5s;
         }
 
@@ -717,17 +730,17 @@
         }
 
         .equipment-item:hover {
-            border-color: var(--blue);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border-color: var(--gray-400);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
             transform: translateY(-5px);
         }
 
         .equipment-item i {
             font-size: 3rem;
-            color: var(--blue);
+            color: var(--gray-100);
             margin-bottom: 1rem;
             display: block;
-            filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.5));
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
         }
 
         .equipment-item h3 {
@@ -755,7 +768,7 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--green), transparent);
+            background: linear-gradient(90deg, transparent, var(--gray-400), transparent);
         }
 
         .stats-grid {
@@ -772,34 +785,34 @@
             border-radius: 15px;
             transition: all 0.3s ease;
             position: relative;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
         .stat-item:hover {
             transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-            border-color: var(--blue);
+            box-shadow: 0 15px 30px rgba(255, 255, 255, 0.1);
+            border-color: var(--gray-400);
         }
 
         .stat-number {
             font-family: 'Orbitron', monospace;
             font-size: 3.5rem;
             font-weight: 900;
-            color: var(--blue);
+            color: var(--gray-100);
             display: block;
             margin-bottom: 1rem;
             animation: numberGlow 2s ease-in-out infinite alternate;
-            text-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
         }
 
         @keyframes numberGlow {
             0% { 
-                color: var(--blue);
-                text-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+                color: var(--gray-100);
+                text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
             }
             100% { 
-                color: var(--purple);
-                text-shadow: 0 0 30px rgba(165, 165, 255, 0.7);
+                color: var(--gray-300);
+                text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
             }
         }
 
@@ -825,14 +838,14 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--blue), transparent);
+            background: linear-gradient(90deg, transparent, var(--gray-400), transparent);
         }
 
         .contact-info {
             background: var(--surface-color);
             border-radius: 20px;
             padding: 3rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             height: 100%;
             border: 1px solid var(--border-color);
         }
@@ -860,15 +873,15 @@
 
         .contact-item:hover {
             background: var(--surface-color);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.05);
             transform: translateX(10px);
         }
 
-        .contact-item:nth-child(1):hover { border-left-color: #28a745; }
-        .contact-item:nth-child(2):hover { border-left-color: #0088cc; }
-        .contact-item:nth-child(3):hover { border-left-color: #dc3545; }
-        .contact-item:nth-child(4):hover { border-left-color: #6f42c1; }
-        .contact-item:nth-child(5):hover { border-left-color: #fd7e14; }
+        .contact-item:nth-child(1):hover { border-left-color: var(--gray-300); }
+        .contact-item:nth-child(2):hover { border-left-color: var(--gray-400); }
+        .contact-item:nth-child(3):hover { border-left-color: var(--gray-200); }
+        .contact-item:nth-child(4):hover { border-left-color: var(--gray-500); }
+        .contact-item:nth-child(5):hover { border-left-color: var(--gray-300); }
 
         .contact-icon {
             width: 60px;
@@ -878,10 +891,10 @@
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
-            color: white;
+            color: var(--primary-color);
             margin-right: 1.5rem;
             flex-shrink: 0;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
             position: relative;
         }
 
@@ -896,14 +909,14 @@
             border-radius: 15px;
             z-index: -1;
             filter: blur(10px);
-            opacity: 0.7;
+            opacity: 0.5;
         }
 
-        .phone-icon { background: linear-gradient(135deg, #28a745, #20c997); }
-        .telegram-icon { background: linear-gradient(135deg, #0088cc, #0099dd); }
-        .email-icon { background: linear-gradient(135deg, #dc3545, #e74c3c); }
-        .address-icon { background: linear-gradient(135deg, #6f42c1, #8f5bff); }
-        .hours-icon { background: linear-gradient(135deg, #fd7e14, #ff8c42); }
+        .phone-icon { background: linear-gradient(135deg, var(--gray-100), var(--gray-300)); }
+        .telegram-icon { background: linear-gradient(135deg, var(--gray-200), var(--gray-400)); }
+        .email-icon { background: linear-gradient(135deg, var(--gray-300), var(--gray-500)); }
+        .address-icon { background: linear-gradient(135deg, var(--gray-400), var(--gray-600)); }
+        .hours-icon { background: linear-gradient(135deg, var(--gray-200), var(--gray-400)); }
 
         .contact-details h4 {
             color: var(--text-color);
@@ -913,7 +926,7 @@
         }
 
         .contact-link {
-            color: var(--blue);
+            color: var(--gray-200);
             text-decoration: none;
             font-weight: 600;
             font-size: 1.1rem;
@@ -923,7 +936,7 @@
         }
 
         .contact-link:hover {
-            color: var(--purple);
+            color: var(--gray-100);
             text-decoration: underline;
         }
 
@@ -949,7 +962,7 @@
         }
 
         .time {
-            color: var(--blue);
+            color: var(--gray-300);
         }
 
         /* Map Container */
@@ -957,7 +970,7 @@
             background: var(--surface-color);
             border-radius: 20px;
             padding: 3rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             height: 100%;
             border: 1px solid var(--border-color);
         }
@@ -966,7 +979,7 @@
             position: relative;
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
             margin-bottom: 2rem;
         }
 
@@ -975,6 +988,7 @@
             height: 400px;
             border: none;
             display: block;
+            filter: grayscale(1) brightness(0.5);
         }
 
         .map-overlay {
@@ -983,7 +997,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1004,8 +1018,8 @@
         }
 
         .map-action-btn {
-            background: linear-gradient(45deg, var(--blue), var(--purple));
-            color: white;
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-300));
+            color: var(--primary-color);
             padding: 0.75rem 1.5rem;
             border-radius: 25px;
             text-decoration: none;
@@ -1014,14 +1028,14 @@
             border: none;
             cursor: pointer;
             font-size: 0.9rem;
-            box-shadow: 0 4px 15px rgba(88, 166, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
         }
 
         .map-action-btn:hover {
-            background: linear-gradient(45deg, var(--purple), var(--blue-light));
-            color: white;
+            background: linear-gradient(45deg, var(--gray-300), var(--gray-400));
+            color: var(--primary-color);
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(88, 166, 255, 0.6);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
         }
 
         /* CTA Section */
@@ -1041,28 +1055,28 @@
             right: 0;
             bottom: 0;
             background: 
-                radial-gradient(circle at 20% 30%, rgba(88, 166, 255, 0.2) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(165, 165, 255, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
             z-index: 1;
             animation: ctaGlow 6s ease-in-out infinite alternate;
         }
 
         @keyframes ctaGlow {
-            0% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0% { opacity: 0.3; }
+            100% { opacity: 0.6; }
         }
 
         .cta-content {
             max-width: 800px;
             margin: 0 auto;
             padding: 4rem;
-            background: rgba(33, 38, 45, 0.8);
+            background: rgba(18, 18, 18, 0.9);
             border: 2px solid var(--border-color);
             border-radius: 20px;
             backdrop-filter: blur(20px);
             position: relative;
             z-index: 2;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
         }
 
         .cta-title {
@@ -1070,7 +1084,7 @@
             font-size: clamp(2rem, 4vw, 3.5rem);
             font-weight: 700;
             margin-bottom: 2rem;
-            background: linear-gradient(45deg, var(--blue-light), var(--purple));
+            background: linear-gradient(45deg, var(--gray-100), var(--gray-400));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -1241,7 +1255,7 @@
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-secondary);
+            background: var(--gray-500);
         }
     </style>
 </head>
@@ -1249,13 +1263,13 @@
    <!-- Floating Objects -->
    <div class="floating-objects" id="floatingObjects"></div>
 
-   <!-- Header - same structure as base.html -->
+   <!-- Header -->
    <header class="navbar">
        <div class="container-fluid px-3">
            <div class="d-flex justify-content-between align-items-center w-100">
                <!-- Logo -->
                <a class="navbar-brand" href="/">
-                   <img src="/static/images/logo.svg" alt="Логотип" class="logo-img" style="width: 300px">
+                   <img src="/static/images/logo.png" alt="Логотип" class="logo-img" style="width: 250px; margin-left: 100px;">
                </a>
                
                <!-- Navigation Controls -->
@@ -1277,11 +1291,14 @@
        <!-- Hero Section -->
        <section class="hero">
            <div class="hero-content">
-               <h1 class="hero-title"><img src="/static/images/logo.svg" alt="Hero Image" class="img-fluid"></h1>
-               <p class="hero-subtitle">Профессиональная аренда оборудования для фото и видеосъемки</p>
+               <h3 class="hero-title"><img src="/static/images/1v.png" alt="Логотип" class="logo-img hero-logo"></h3>
+               <p class="hero-subtitle">Реквизит для съёмок, фотосессий и событий</p>
+               <p>Abstract Props — склад предметов для кадра.<br>
+                Мебель, текстиль, посуда, декор, светильники и сотни других вещей,<br>
+                которые помогают оживить пространство и рассказать историю</p>
                <div class="hero-buttons">
-                   <a href="/catalog/" class="hero-button primary">Просмотреть каталог</a>
-                   <a href="#services" class="hero-button secondary">Узнать больше</a>
+                   <a href="/catalog/" class="hero-button primary">Посмотреть каталог</a>
+                   <a href="#services" class="hero-button secondary">Как это работает</a>
                </div>
            </div>
        </section>
@@ -1290,15 +1307,16 @@
        <section class="company-info" id="about">
            <div class="container">
                <div class="company-content animate-on-scroll">
-                   <h2 class="company-title">Все для вашего творчества и профессиональной работы</h2>
+                   <h2 class="company-title">О НАС</h2>
+                   <p class="section-subtitle animate-on-scroll"><strong>Мы — не рентал техники. Мы — склад реквизита.</strong></p>
                    <p class="company-text">
-                       Мы предоставляем <strong>качественное оборудование и надежный сервис</strong> для съемок любого уровня — от блогеров и фотографов до кинокоманд. Наша миссия — сделать профессиональное оборудование доступным для каждого творца.
+                       Abstract Props — это реальный склад предметов, которые снимаются в ваших проектах.<br>
+                        Здесь нет камер или света — только всё, что наполняет кадр жизнью: мебель, посуда,<br>
+                        ткани, предметы быта, инструменты, книги, национальный декор, тысяча мелочей и сотня<br>
+                        редкостей
                    </p>
-                   <p class="company-text">
-                       В нашем распоряжении более <strong>5,000+ единиц оборудования</strong> последнего поколения, которое регулярно обновляется и проходит тщательную проверку. Мы понимаем, насколько важна надежность техники для успешной реализации ваших проектов.
-                   </p>
-                   <p class="company-text">
-                       <strong>1,000+ довольных клиентов</strong> уже доверили нам свои проекты и получили <strong>99% положительных отзывов</strong>. Каждый день мы подтверждаем наш статус надежного партнера в сфере аренды профессионального оборудования.
+                   <p class="section-subtitle animate-on-scroll">
+                       <small>Часть вещей уже в каталоге, остальное можно запросить лично — часто нужное просто ещё не успели сфотографировать.</small>
                    </p>
                </div>
            </div>
@@ -1307,37 +1325,41 @@
        <!-- Features Section -->
        <section class="features" id="services">
            <div class="container">
-               <h2 class="section-title animate-on-scroll">Наши преимущества</h2>
-               <p class="section-subtitle animate-on-scroll">Профессиональный подход к каждому клиенту</p>
+               <h2 class="section-title animate-on-scroll">Как работает аренда?</h2>
+               {% comment %} <p class="section-subtitle animate-on-scroll">Профессиональный подход к каждой детали</p> {% endcomment %}
                
                <div class="features-grid">
                    <div class="feature-card animate-on-scroll">
                        <div class="feature-content">
                            <div class="feature-icon">
+                                <i class="fas fa-headset"></i>
+                           </div>
+                           <h3 class="feature-title">Выбираете реквизит</h3>
+                           <p class="feature-description">В каталоге или просто
+                            пишете нам — поможем
+                            найти нужное</p>
+                       </div>
+                   </div>
+                   
+                   <div class="feature-card animate-on-scroll">
+                       <div class="feature-content">
+                           <div class="feature-icon">
+                                <i class="fas fa-check-circle"></i>
+                           </div>
+                           <h3 class="feature-title">Проверяем наличие
+                            и цену</h3>
+                           <p class="feature-description">Наши специалисты всегда на связи для консультаций по настройке, техническим вопросам и решению любых ситуаций во время аренды.</p>
+                       </div>
+                   </div>
+                   
+                   <div class="feature-card animate-on-scroll">
+                       <div class="feature-content">
+                           <div class="feature-icon">
                                <i class="fas fa-shipping-fast"></i>
                            </div>
-                           <h3 class="feature-title">Быстрая доставка по городу</h3>
-                           <p class="feature-description">Мы привезем оборудование туда, где идет ваша съемка, в удобное для вас время. Наша логистическая служба работает круглосуточно для вашего удобства.</p>
-                       </div>
-                   </div>
-                   
-                   <div class="feature-card animate-on-scroll">
-                       <div class="feature-content">
-                           <div class="feature-icon">
-                               <i class="fas fa-headset"></i>
-                           </div>
-                           <h3 class="feature-title">Техническая поддержка 24/7</h3>
-                           <p class="feature-description">Поможем настроить свет, камеры и звук, ответим на любые вопросы в процессе аренды. Наши специалисты всегда готовы прийти на помощь.</p>
-                       </div>
-                   </div>
-                   
-                   <div class="feature-card animate-on-scroll">
-                       <div class="feature-content">
-                           <div class="feature-icon">
-                               <i class="fas fa-check-circle"></i>
-                           </div>
-                           <h3 class="feature-title">Проверенное оборудование</h3>
-                           <p class="feature-description">Каждый комплект проходит диагностику и подготовку перед выдачей. Мы гарантируем исправность всего предоставляемого оборудования.</p>
+                           <h3 class="feature-title">Выдача или *доставка</h3>
+                           <p class="feature-description">Самовывоз со склада или
+                            *доставка по Ташкенту</p>
                        </div>
                    </div>
                </div>
@@ -1347,50 +1369,27 @@
        <!-- Equipment Section -->
        <section class="equipment-section" id="equipment">
            <div class="container">
-               <h2 class="equipment-title animate-on-scroll">У нас в наличии:</h2>
+               <h2 class="equipment-title animate-on-scroll">ДЛЯ КОГО?</h2>
                
                <div class="equipment-grid">
                    <div class="equipment-item animate-on-scroll">
                        <i class="fas fa-lightbulb"></i>
-                       <h3>Осветительные приборы</h3>
-                       <p>Профессиональные LED-панели, софтбоксы, рефлекторы и студийный свет</p>
+                       <h3>Продакшн-командам</h3>
+                       <p>для фильмов, клипов и рекламы</p>
                    </div>
                    
                    <div class="equipment-item animate-on-scroll">
                        <i class="fas fa-camera"></i>
-                       <h3>Камеры и объективы</h3>
-                       <p>Современные фото и видеокамеры, широкий выбор объективов всех категорий</p>
+                       <h3>Фотографам и студиям</h3>
+                       <p>для интерьерных и имиджевых съёмок</p>
                    </div>
                    
                    <div class="equipment-item animate-on-scroll">
                        <i class="fas fa-video"></i>
-                       <h3>Стедикамы, штативы, риги</h3>
-                       <p>Стабилизаторы изображения, профессиональные штативы и операторские риги</p>
+                       <h3>Контент-креаторам</h3>
+                       <p>для коротких форматов</p>
                    </div>
                    
-                   <div class="equipment-item animate-on-scroll">
-                       <i class="fas fa-microphone"></i>
-                       <h3>Звуковое оборудование</h3>
-                       <p>Микрофоны, рекордеры, мониторы и полные аудиосистемы</p>
-                   </div>
-                   
-                   <div class="equipment-item animate-on-scroll">
-                       <i class="fas fa-palette"></i>
-                       <h3>Фоны и аксессуары для студии</h3>
-                       <p>Хромакей, циклорамы, держатели фонов и студийная мебель</p>
-                   </div>
-                   
-                   <div class="equipment-item animate-on-scroll">
-                       <i class="fas fa-star"></i>
-                       <h3>Декор и реквизит для съемок</h3>
-                       <p>Разнообразный реквизит, декорации и аксессуары для тематических съемок</p>
-                   </div>
-                   
-                   <div class="equipment-item animate-on-scroll">
-                       <i class="fas fa-tools"></i>
-                       <h3>И многое другое</h3>
-                       <p>Дополнительные аксессуары, кабели, адаптеры и специализированное оборудование</p>
-                   </div>
                </div>
            </div>
        </section>
@@ -1398,22 +1397,32 @@
        <!-- Stats Section -->
        <section class="stats">
            <div class="container">
+                <h2 class="equipment-title animate-on-scroll">Почему с нами удобно?</h2>
+
                <div class="stats-grid animate-on-scroll">
                    <div class="stat-item">
-                       <span class="stat-number" data-target="5000">0</span>
-                       <span class="stat-label">+ единиц оборудования</span>
+                       <span class="stat-number">🎇</span>
+                       <span class="stat-label">Всё своё — мы знаем
+                        каждую вещь и где она
+                        лежит</span>
                    </div>
                    <div class="stat-item">
-                       <span class="stat-number" data-target="1000">0</span>
-                       <span class="stat-label">+ довольных клиентов</span>
+                       <span class="stat-number">⚡</span>
+                       <span class="stat-label">Быстрая реакция — всё
+                        решается сообщением в
+                        Telegram</span>
                    </div>
                    <div class="stat-item">
-                       <span class="stat-number">99</span>
-                       <span class="stat-label">% положительных отзывов</span>
+                       <span class="stat-number">🤝</span>
+                       <span class="stat-label">Без бюрократии — всё по-
+                        человечески</span>
                    </div>
                    <div class="stat-item">
-                       <span class="stat-number">24/7</span>
-                       <span class="stat-label">Техподдержка</span>
+                       <span class="stat-number">🧠</span>
+                       <span class="stat-label">Продакшн-подход — 
+                        понимаем, как работает
+                        площадка и что важно по
+                        таймингу</span>
                    </div>
                </div>
            </div>
@@ -1422,14 +1431,14 @@
        <!-- Contact Section -->
        <section class="contact-location" id="contact">
             <div class="container">
-                <h2 class="section-title animate-on-scroll">Свяжитесь с нами</h2>
-                <p class="section-subtitle animate-on-scroll">Мы всегда готовы помочь вам с выбором оборудования</p>
+                <h2 class="section-title animate-on-scroll">Контакты</h2>
+                <p class="section-subtitle animate-on-scroll">Напишите нам — поможем подобрать нужное под задачу, даже если его нет в онлайн-каталоге</p>
                 
                 <div class="row g-4">
                     <!-- Contact Information -->
                     <div class="col-lg-6">
                         <div class="contact-info animate-on-scroll">
-                            <h3 class="contact-title">Наши контакты</h3>
+                            <h3 class="contact-title">Свяжитесь с нами</h3>
                             
                             <!-- Phone -->
                             <div class="contact-item">
@@ -1438,8 +1447,8 @@
                                 </div>
                                 <div class="contact-details">
                                     <h4>Телефон</h4>
-                                    <a href="tel:+998901234567" class="contact-link">+998 (90) 123-45-67</a>
-                                    <p class="contact-description">Звоните для быстрой консультации</p>
+                                    <a href="tel:+998996923043" class="contact-link"> +998 99 692 30 43</a>
+                                    <p class="contact-description">Звоните для консультации</p>
                                 </div>
                             </div>
                             
@@ -1450,33 +1459,8 @@
                                 </div>
                                 <div class="contact-details">
                                     <h4>Telegram</h4>
-                                    <a href="https://t.me/abstract_rental" class="contact-link" target="_blank">@abstract_rental</a>
-                                    <p class="contact-description">Пишите в любое время</p>
-                                </div>
-                            </div>
-                            
-                            <!-- Working Hours -->
-                            <div class="contact-item">
-                                <div class="contact-icon hours-icon">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="contact-details">
-                                    <h4>Часы работы</h4>
-                                    <div class="working-hours">
-                                        <div class="hours-row">
-                                            <span class="days">Пн - Пт:</span>
-                                            <span class="time">09:00 - 19:00</span>
-                                        </div>
-                                        <div class="hours-row">
-                                            <span class="days">Сб:</span>
-                                            <span class="time">10:00 - 16:00</span>
-                                        </div>
-                                        <div class="hours-row">
-                                            <span class="days">Вс:</span>
-                                            <span class="time">Выходной</span>
-                                        </div>
-                                    </div>
-                                    <p class="contact-description">Доставка работает 24/7</p>
+                                    <a href="https://t.me/abstract_rental" class="contact-link" target="_blank">@aragoremykin</a>
+                                    <p class="contact-description">Напишите нам в любое время</p>
                                 </div>
                             </div>
                         </div>
@@ -1485,7 +1469,7 @@
                     <!-- Map -->
                     <div class="col-lg-6">
                         <div class="map-container animate-on-scroll">
-                            <h3 class="contact-title">Мы на карте</h3>
+                            <h3 class="contact-title">Наше расположение</h3>
                             <div class="map-wrapper">
                                 <!-- Yandex Maps iframe -->
                                 <iframe 
@@ -1498,8 +1482,8 @@
                                 <div class="map-overlay">
                                     <div class="map-actions">
                                         <a href="https://yandex.uz/maps/-/CHXsRTmR" 
-                                        target="_blank" 
-                                        class="map-action-btn">
+                                           target="_blank" 
+                                           class="map-action-btn">
                                             <i class="fas fa-external-link-alt me-2"></i>
                                             Открыть в Яндекс.Картах
                                         </a>
@@ -1508,8 +1492,8 @@
                                             Скопировать адрес
                                         </button>
                                         <a href="https://yandex.uz/maps/-/CHXsRTmR" 
-                                        target="_blank" 
-                                        class="map-action-btn">
+                                           target="_blank" 
+                                           class="map-action-btn">
                                             <i class="fas fa-route me-2"></i>
                                             Построить маршрут
                                         </a>
@@ -1526,11 +1510,11 @@
        <section class="cta-section" id="cta">
            <div class="container">
                <div class="cta-content animate-on-scroll">
-                   <h2 class="cta-title">Готовы к съемке?</h2>
-                   <p class="cta-text">Свяжитесь с нами сегодня, чтобы подобрать оборудование для вашего проекта и получить профессиональную консультацию.</p>
+                   <h2 class="cta-title">Нужен реквизит на проект?</h2>
+                   <p class="cta-text">Просто напишите в Telegram — мы подберём, сфотографируем и подготовим к выдаче.</p>
                    <div class="hero-buttons">
-                       <a href="/catalog/" class="hero-button primary">Посмотреть каталог</a>
-                       <a href="tel:+998901234567" class="hero-button secondary">Связаться с нами</a>
+                       <a href="/catalog/" class="hero-button primary">Открыть каталог</a>
+                       <a href="https://t.me/abstract_rental" class="hero-button secondary">Написать в Telegram</a>
                    </div>
                </div>
            </div>
@@ -1553,12 +1537,10 @@
            const objectCount = window.innerWidth > 768 ? 30 : 15;
            
            const shapes = ['circle', 'square', 'triangle', 'line', 'glow'];
-           const colors = ['--blue', '--purple', '--green', '--blue-light', '--orange'];
            
            for (let i = 0; i < objectCount; i++) {
                const object = document.createElement('div');
                const shape = shapes[Math.floor(Math.random() * shapes.length)];
-               const color = colors[Math.floor(Math.random() * colors.length)];
                
                object.className = `floating-object ${shape} neon`;
                
@@ -1566,21 +1548,17 @@
                    const size = Math.random() * 40 + 30;
                    object.style.width = size + 'px';
                    object.style.height = size + 'px';
-                   object.style.borderColor = `var(${color})`;
                } else if (shape === 'square') {
                    const size = Math.random() * 30 + 20;
                    object.style.width = size + 'px';
                    object.style.height = size + 'px';
-                   object.style.borderColor = `var(${color})`;
                } else if (shape === 'line') {
                    const width = Math.random() * 80 + 60;
                    object.style.width = width + 'px';
-                   object.style.background = `var(${color})`;
                } else if (shape === 'glow') {
                    const size = Math.random() * 20 + 15;
                    object.style.width = size + 'px';
                    object.style.height = size + 'px';
-                   object.style.background = `var(${color})`;
                }
                
                // Random positioning and timing
@@ -1687,7 +1665,7 @@
                    this.style.transform = 'scale(0.95)';
                    
                    // Add glow effect
-                   this.style.boxShadow = '0 0 30px rgba(88, 166, 255, 0.8)';
+                   this.style.boxShadow = '0 0 30px rgba(255, 255, 255, 0.4)';
                    
                    setTimeout(() => {
                        window.location.href = this.href;
@@ -1754,17 +1732,17 @@
        // Enhanced notification function with animations
        function showNotification(message, type = 'success') {
            const notification = document.createElement('div');
-           notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+           notification.className = `alert alert-${type === 'success' ? 'light' : 'dark'} alert-dismissible fade show position-fixed`;
            notification.style.cssText = `
                top: 20px; 
                right: 20px; 
                z-index: 9999; 
                min-width: 300px;
-               background: ${type === 'success' ? 'linear-gradient(45deg, #28a745, #20c997)' : 'linear-gradient(45deg, #dc3545, #c82333)'};
-               border: none;
+               background: ${type === 'success' ? 'linear-gradient(45deg, #f5f5f5, #e0e0e0)' : 'linear-gradient(45deg, #333, #1a1a1a)'};
+               border: 1px solid ${type === 'success' ? '#cccccc' : '#4d4d4d'};
                border-radius: 15px;
-               color: white;
-               box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+               color: ${type === 'success' ? '#000' : '#fff'};
+               box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
                backdrop-filter: blur(10px);
                animation: slideInRight 0.5s ease;
            `;
@@ -1772,7 +1750,7 @@
                <div class="d-flex align-items-center">
                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2 fs-5"></i>
                    <span>${message}</span>
-                   <button type="button" class="btn-close btn-close-white ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+                   <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
                </div>
            `;
            
@@ -1809,7 +1787,7 @@
                left: 0;
                width: 100%;
                height: 100%;
-               background: linear-gradient(135deg, #0d1117, #161b22);
+               background: linear-gradient(135deg, #000000, #1a1a1a);
                display: flex;
                align-items: center;
                justify-content: center;
@@ -1817,8 +1795,8 @@
                transition: opacity 1s ease;
            `;
            loadingScreen.innerHTML = `
-               <div style="text-align: center; color: #58a6ff;">
-                   <div style="width: 60px; height: 60px; border: 3px solid transparent; border-top: 3px solid #58a6ff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+               <div style="text-align: center; color: #ffffff;">
+                   <div style="width: 60px; height: 60px; border: 3px solid transparent; border-top: 3px solid #ffffff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
                    <div style="font-family: 'Orbitron', monospace; font-size: 1.5rem; font-weight: 700;">ABSTRACT</div>
                    <div style="font-size: 0.9rem; opacity: 0.7; margin-top: 10px;">Загрузка...</div>
                </div>
@@ -1918,7 +1896,7 @@
            const heroTitle = document.querySelector('.hero-title');
            if (heroTitle) {
                setInterval(() => {
-                   heroTitle.style.textShadow = '0 0 ' + (Math.random() * 50 + 20) + 'px rgba(88, 166, 255, 0.6)';
+                   heroTitle.style.textShadow = '0 0 ' + (Math.random() * 50 + 20) + 'px rgba(255, 255, 255, 0.4)';
                }, 2000);
            }
        });
