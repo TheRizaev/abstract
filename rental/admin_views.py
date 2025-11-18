@@ -440,7 +440,8 @@ def admin_create_order(request):
                     })
             
             total = 0
-            rental_days = (order.rental_end - order.rental_start).days + 1
+            # ИСПРАВЛЕНИЕ: Используем rental_days напрямую
+            rental_days = order.rental_days
             
             for item in cart_items:
                 try:
@@ -778,7 +779,6 @@ def delete_shelf(request, shelf_id):
 def edit_order(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     
-    # Проверяем, что заявка в статусе ожидания
     if order.status != 'pending':
         messages.error(request, 'Можно редактировать только заявки в статусе "Ожидает подтверждения"')
         return redirect('admin_order_detail', order_id=order.id)
@@ -790,16 +790,13 @@ def edit_order(request, order_id):
         print(f"Заявка ID: {order.id}")
         print(f"Текущий статус: {order.status}")
         
-        # Передаем пользователя в форму
         form = OrderForm(request.POST, instance=order, user=request.user)
         
-        # Получаем товары из POST данных
         cart_data_str = request.POST.get('cart_data', '[]')
         print(f"\n[ШАГ 1] Данные корзины из POST:")
         print(f"  Raw string: {cart_data_str[:200]}...")
         print(f"  Длина строки: {len(cart_data_str)} символов")
         
-        # Парсим JSON данные
         try:
             import json as json_lib
             cart_items = json_lib.loads(cart_data_str)
@@ -825,13 +822,12 @@ def edit_order(request, order_id):
             print("✓ Форма валидна!")
             print(f"  Контактное лицо: {form.cleaned_data.get('contact_person')}")
             print(f"  Телефон: {form.cleaned_data.get('phone1')}")
-            print(f"  Период: {form.cleaned_data.get('rental_start')} - {form.cleaned_data.get('rental_end')}")
+            print(f"  Дата начала: {form.cleaned_data.get('rental_start')}")
+            print(f"  Количество дней: {form.cleaned_data.get('rental_days')}")
             
-            # Сохраняем заказ БЕЗ коммита
             order = form.save(commit=False)
             print(f"\n[ШАГ 4] Форма сохранена (без коммита)")
             
-            # КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Сохраняем информацию о старых товарах
             old_items_dict = {}
             print(f"\n[ШАГ 5] Сохраняем старые товары из ОРИГИНАЛЬНОЙ заявки:")
             for item in order.items.all():
@@ -843,7 +839,6 @@ def edit_order(request, order_id):
             order.items.all().delete()
             print(f"  ✓ Удалено {deleted_count} позиций")
             
-            # ИСПРАВЛЕННАЯ ЛОГИКА: Проверяем доступность новых товаров
             print(f"\n[ШАГ 7] Проверяем доступность товаров:")
             print("  ЛОГИКА: available + было_в_заявке >= требуется_сейчас")
             
@@ -853,11 +848,8 @@ def edit_order(request, order_id):
                     required_qty = item_data['quantity']
                     available_now = product.available_quantity
                     
-                    # Сколько этого товара было в ОРИГИНАЛЬНОЙ заявке
                     was_in_order = old_items_dict.get(product.id, 0)
                     
-                    # ПРАВИЛЬНЫЙ РАСЧЁТ: 
-                    # Реально доступно = то_что_на_складе + то_что_было_в_этой_заявке
                     actually_available = available_now + was_in_order
                     
                     print(f"\n  Товар {idx}: {product.name} (ID={product.id})")
@@ -872,16 +864,16 @@ def edit_order(request, order_id):
                             f'Недостаточно товара "{product.name}" на складе. '
                             f'Доступно для заявки: {actually_available} шт., требуется: {required_qty} шт.')
                         
-                        # Восстанавливаем старые позиции
                         print(f"\n[ОТКАТ] Восстанавливаем старые позиции...")
                         for old_product_id, old_quantity in old_items_dict.items():
                             try:
                                 old_product = Product.objects.get(id=old_product_id)
+                                # ИСПРАВЛЕНИЕ: Используем АКТУАЛЬНУЮ цену товара
                                 OrderItem.objects.create(
                                     order=order,
                                     product=old_product,
                                     quantity=old_quantity,
-                                    price=old_product.daily_price * ((order.rental_end - order.rental_start).days + 1)
+                                    price=old_product.daily_price * order.rental_days
                                 )
                                 print(f"  ✓ Восстановлен: {old_product.name} x {old_quantity}")
                             except Product.DoesNotExist:
@@ -895,16 +887,16 @@ def edit_order(request, order_id):
                     print(f"    ✗ ТОВАР ID {item_data['product_id']} НЕ НАЙДЕН!")
                     messages.error(request, f'Товар ID {item_data["product_id"]} не найден')
                     
-                    # Восстанавливаем старые позиции
                     print(f"\n[ОТКАТ] Восстанавливаем старые позиции...")
                     for old_product_id, old_quantity in old_items_dict.items():
                         try:
                             old_product = Product.objects.get(id=old_product_id)
+                            # ИСПРАВЛЕНИЕ: Используем АКТУАЛЬНУЮ цену товара
                             OrderItem.objects.create(
                                 order=order,
                                 product=old_product,
                                 quantity=old_quantity,
-                                price=old_product.daily_price * ((order.rental_end - order.rental_start).days + 1)
+                                price=old_product.daily_price * order.rental_days
                             )
                             print(f"  ✓ Восстановлен: {old_product.name} x {old_quantity}")
                         except Product.DoesNotExist:
@@ -912,14 +904,14 @@ def edit_order(request, order_id):
                     
                     return redirect('edit_order', order_id=order.id)
             
-            # Рассчитываем общую сумму
-            rental_days = (order.rental_end - order.rental_start).days + 1
+            rental_days = order.rental_days
             print(f"\n[ШАГ 8] Расчет суммы:")
             print(f"  Количество дней: {rental_days}")
             
             total = 0
             for item_data in cart_items:
                 try:
+                    # ИСПРАВЛЕНИЕ: Получаем товар заново, чтобы использовать актуальную цену
                     product = Product.objects.get(id=item_data['product_id'])
                     item_total = product.daily_price * item_data['quantity'] * rental_days
                     total += item_total
@@ -936,11 +928,11 @@ def edit_order(request, order_id):
             print(f"    - Статус: {order.status}")
             print(f"    - Сумма: {order.total_amount}")
             
-            # Создаем новые позиции заявки
             print(f"\n[ШАГ 10] Создаем новые позиции:")
             created_items = 0
             for item_data in cart_items:
                 try:
+                    # ИСПРАВЛЕНИЕ: Получаем товар заново для использования актуальной цены
                     product = Product.objects.get(id=item_data['product_id'])
                     order_item = OrderItem.objects.create(
                         order=order,
@@ -949,13 +941,12 @@ def edit_order(request, order_id):
                         price=product.daily_price * rental_days
                     )
                     created_items += 1
-                    print(f"  ✓ Создан OrderItem #{order_item.id}: {product.name} x {item_data['quantity']}")
+                    print(f"  ✓ Создан OrderItem #{order_item.id}: {product.name} x {item_data['quantity']} по цене {product.daily_price} сум/день")
                 except Product.DoesNotExist:
                     print(f"  ✗ Товар ID {item_data['product_id']} не найден")
             
             print(f"\n  СОЗДАНО ПОЗИЦИЙ: {created_items} из {len(cart_items)}")
             
-            # Проверяем результат
             print(f"\n[ШАГ 11] Проверка результата:")
             final_items = order.items.all()
             print(f"  Позиций в заявке после сохранения: {final_items.count()}")
@@ -978,18 +969,16 @@ def edit_order(request, order_id):
                     messages.error(request, f'{field}: {error}')
             return redirect('edit_order', order_id=order.id)
     else:
-        # GET запрос
         form = OrderForm(instance=order, user=request.user)
 
     all_products = Product.objects.all().order_by('name')
     
-    # Формируем current_items
     current_items_data = []
     for item in order.items.all():
         item_info = {
             'product_id': item.product.id,
             'name': item.product.get_display_name(),
-            'price': float(item.product.daily_price),
+            'price': float(item.product.daily_price),  # Используем актуальную цену
             'quantity': item.quantity
         }
         current_items_data.append(item_info)

@@ -135,26 +135,29 @@
                         <div class="col-md-6">
                             <label for="{{ form.rental_start.id_for_label }}" class="form-label">Начало аренды</label>
                             <input type="date" 
-                                   name="rental_start" 
-                                   class="form-control" 
-                                   id="{{ form.rental_start.id_for_label }}"
-                                   value="{{ order.rental_start|date:'Y-m-d' }}"
-                                   required>
+                                name="rental_start" 
+                                class="form-control" 
+                                id="{{ form.rental_start.id_for_label }}"
+                                value="{{ order.rental_start|date:'Y-m-d' }}"
+                                required>
                             {% if form.rental_start.errors %}
                                 <div class="text-danger">{{ form.rental_start.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label for="{{ form.rental_end.id_for_label }}" class="form-label">Конец аренды</label>
-                            <input type="date" 
-                                   name="rental_end" 
-                                   class="form-control" 
-                                   id="{{ form.rental_end.id_for_label }}"
-                                   value="{{ order.rental_end|date:'Y-m-d' }}"
-                                   required>
-                            {% if form.rental_end.errors %}
-                                <div class="text-danger">{{ form.rental_end.errors }}</div>
+                            <label for="{{ form.rental_days.id_for_label }}" class="form-label">Количество дней аренды</label>
+                            <input type="number" 
+                                name="rental_days" 
+                                class="form-control" 
+                                id="{{ form.rental_days.id_for_label }}"
+                                value="{{ order.rental_days }}"
+                                min="1"
+                                max="365"
+                                required>
+                            {% if form.rental_days.errors %}
+                                <div class="text-danger">{{ form.rental_days.errors }}</div>
                             {% endif %}
+                            <small class="form-text text-muted">От 1 до 365 дней</small>
                         </div>
                         
                         <!-- Комментарий -->

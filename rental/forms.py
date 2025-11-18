@@ -12,7 +12,7 @@ class ProductForm(forms.ModelForm):
                 'class': 'form-control', 
                 'rows': 6, 
                 'placeholder': 'Описание товара (поддерживается Markdown)',
-                'style': 'text-transform: none;'  # Убираем любые CSS трансформации текста
+                'style': 'text-transform: none;'
             }),
             'photo': forms.ClearableFileInput(attrs={'class': 'form-control', 'id': 'photoInput'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
@@ -23,7 +23,6 @@ class ProductForm(forms.ModelForm):
         }
     
     def clean_description(self):
-        """Очищаем описание, сохраняя исходный регистр"""
         description = self.cleaned_data.get('description')
         if description:
             return description.strip()
@@ -47,7 +46,6 @@ class ShelfForm(forms.ModelForm):
         }
 
 class OrderForm(forms.ModelForm):
-    # Валидатор для телефонных номеров
     phone_validator = RegexValidator(
         regex=r'^\+998\s?\(\d{2}\)\s?\d{3}-\d{2}-\d{2}$',
         message="Введите номер в формате: +998 (99) 123-45-67"
@@ -118,14 +116,12 @@ class OrderForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Поле залога доступно только для администраторов
         if not (user and user.is_staff):
             self.fields.pop('deposit_amount', None)
     
     def clean_phone1(self):
         phone = self.cleaned_data.get('phone1')
         if phone:
-            # Удаляем все пробелы и символы для проверки
             digits_only = ''.join(filter(str.isdigit, phone))
             if not digits_only.startswith('998') or len(digits_only) != 12:
                 raise forms.ValidationError("Номер должен начинаться с +998 и содержать 9 цифр после кода страны")
@@ -134,7 +130,6 @@ class OrderForm(forms.ModelForm):
     def clean_phone2(self):
         phone = self.cleaned_data.get('phone2')
         if phone:
-            # Удаляем все пробелы и символы для проверки
             digits_only = ''.join(filter(str.isdigit, phone))
             if not digits_only.startswith('998') or len(digits_only) != 12:
                 raise forms.ValidationError("Номер должен начинаться с +998 и содержать 9 цифр после кода страны")

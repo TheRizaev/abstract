@@ -111,11 +111,12 @@
                             {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label for="{{ form.rental_end.id_for_label }}" class="form-label">Конец аренды</label>
-                            {{ form.rental_end }}
-                            {% if form.rental_end.errors %}
-                                <div class="text-danger">{{ form.rental_end.errors }}</div>
+                            <label for="{{ form.rental_days.id_for_label }}" class="form-label">Количество дней аренды</label>
+                            {{ form.rental_days }}
+                            {% if form.rental_days.errors %}
+                                <div class="text-danger">{{ form.rental_days.errors }}</div>
                             {% endif %}
+                            <small class="form-text text-muted">От 1 до 365 дней</small>
                         </div>
                         <div class="col-12">
                             <label for="{{ form.comment.id_for_label }}" class="form-label">Комментарий</label>
@@ -157,12 +158,6 @@
                     <small class="text-muted d-block mt-1">
                         Сумма залога устанавливается администратором
                     </small>
-                </div>
-                <div class="mt-2">
-                    <div class="d-flex justify-content-between">
-                        <strong>Общая сумма с залогом:</strong>
-                        <strong class="text-primary" id="totalWithDeposit">0 сум</strong>
-                    </div>
                 </div>
                 {% endif %}
                 
@@ -330,6 +325,8 @@ function changeCartQuantity(productId, delta) {
 }
 
 function updateCartDisplay() {
+    console.log('Обновление отображения корзины');
+    
     const cartItems = document.getElementById('cartItems');
     const totalAmount = document.getElementById('totalAmount');
     const submitBtn = document.getElementById('submitBtn');
@@ -344,15 +341,19 @@ function updateCartDisplay() {
     let html = '';
     let subtotal = 0;
     
+    // ИСПРАВЛЕНИЕ: Получаем количество дней из формы
+    const daysInput = document.getElementById('{{ form.rental_days.id_for_label }}');
+    const rentalDays = daysInput ? parseInt(daysInput.value) || 1 : 1;
+    
     cart.forEach(item => {
-        const itemTotal = item.price * item.quantity;
+        const itemTotal = item.price * item.quantity * rentalDays;
         subtotal += itemTotal;
         
         html += `
             <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                 <div>
                     <strong>${item.name}</strong><br>
-                    <small>${item.quantity} x ${formatPrice(item.price)} сум</small>
+                    <small>${item.quantity} x ${formatPrice(item.price)} сум/день x ${rentalDays} дн.</small>
                 </div>
                 <div class="d-flex align-items-center">
                     <div class="btn-group btn-group-sm me-2" role="group">
@@ -400,8 +401,9 @@ function updateCartDisplay() {
     totalAmount.textContent = `${formatPrice(finalTotal)} сум`;
     submitBtn.disabled = false;
     
-    // Обновляем скрытое поле с данными корзины
     document.getElementById('cartData').value = JSON.stringify(cart);
+    
+    console.log('Корзина обновлена, товаров:', cart.length, 'Дней:', rentalDays, 'Сумма:', finalTotal);
 }
 
 // Обновление отображения залога
@@ -656,19 +658,15 @@ function removeDiscount() {
 
 // Обработчики событий
 document.addEventListener('DOMContentLoaded', function() {
-    // Поиск по Enter
-    document.getElementById('productSearch').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            searchProducts();
-        }
-    });
+    // Обработчик для изменения количества дней
+    const daysInput = document.getElementById('{{ form.rental_days.id_for_label }}');
     
-    // Быстрое добавление по Enter
-    document.getElementById('quickAddArticle').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            addByArticle();
-        }
-    });
+    if (daysInput) {
+        daysInput.addEventListener('input', function() {
+            updateCartDisplay();
+            updateDepositDisplay();
+        });
+    }
     
     // Отслеживание изменений залога
     const depositInput = document.getElementById('{{ form.deposit_amount.id_for_label }}');
