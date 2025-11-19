@@ -65,20 +65,37 @@ def product_list(request):
                 search_type = 'smart'
                 logger.info(f"Умный поиск вернул {len(products)} товаров")
             else:
-                products = []
-                search_type = 'smart'
-                logger.info("Умный поиск не нашел товаров")
+                # Если умный поиск не нашел результатов, используем стандартный поиск без учёта регистра
+                logger.info("Умный поиск не нашел товаров, пробуем стандартный поиск")
+                products = Product.objects.filter(
+                    Q(name__icontains=search_query) | 
+                    Q(article__icontains=search_query) |
+                    Q(description__icontains=search_query)
+                ).distinct().order_by('-created_at')
+                
+                if products.exists():
+                    search_type = 'standard'
+                    logger.info(f"Стандартный поиск вернул {products.count()} товаров")
+                else:
+                    products = []
+                    search_type = 'smart'
+                    logger.info("Поиск не нашел товаров")
                 
         except Exception as e:
             logger.error(f"Ошибка умного поиска: {e}")
-            expanded_query = smart_search_service.expand_search_query(search_query)
-            products = Product.objects.filter(
-                Q(name__icontains=search_query) | 
-                Q(article__icontains=search_query) |
-                Q(description__icontains=search_query) |
-                Q(name__icontains=expanded_query) |
-                Q(description__icontains=expanded_query)
-            ).distinct().order_by('-created_at')  # ИЗМЕНЕНО: сортировка по дате
+            search_lower = search_query.lower()
+            
+            # Получаем все товары и фильтруем в Python
+            all_products = Product.objects.all()
+            product_ids = []
+            
+            for product in all_products:
+                if (search_lower in (product.name or '').lower() or
+                    search_lower in (product.article or '').lower() or
+                    search_lower in (product.description or '').lower()):
+                    product_ids.append(product.id)
+            
+            products = Product.objects.filter(id__in=product_ids).order_by('-created_at')
             search_type = 'fallback'
             messages.warning(request, 'Умный поиск временно недоступен, используется расширенный поиск.')
     

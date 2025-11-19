@@ -338,15 +338,15 @@
             }
         }
 
-        /* Hero Section - Monochrome */
+        /* ===== HERO SECTION ===== */
         .hero {
-            min-height: 100vh;
+            min-height: calc(100vh - var(--header-height));
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
+            padding: 4rem 2rem;
             position: relative;
-            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #0d0d0d 100%);
             overflow: hidden;
         }
 
@@ -357,41 +357,84 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 70%);
-            z-index: 1;
-            animation: heroGlow 8s ease-in-out infinite alternate;
-        }
-
-        @keyframes heroGlow {
-            0% { opacity: 0.5; }
-            100% { opacity: 0.8; }
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .hero-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            z-index: 2;
-            position: relative;
+            max-width: 800px;
+            z-index: 1;
+        }
+
+        .hero-logo {
+            height: 80px;
+            width: auto;
+            max-width: 100%;
+            margin-bottom: 2rem;
+            filter: brightness(1.2) invert(1);
         }
 
         .hero-title {
-            font-family: 'Orbitron', monospace;
-            font-size: 4rem;
-            font-weight: 900;
-            line-height: 1;
-            margin-bottom: 3rem;
-            background: linear-gradient(45deg, var(--gray-100), var(--gray-400), var(--gray-100));
-            background-size: 200% 200%;
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: titleGlow 3s ease-in-out infinite alternate, gradientShift 6s ease-in-out infinite;
-            letter-spacing: 0.1em;
-            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+            margin: 0 0 1.5rem 0;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .hero-content p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-button {
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hero-button.primary {
+            background: linear-gradient(135deg, var(--gray-100), var(--gray-300));
+            color: var(--primary-color);
+            border: 1px solid var(--gray-300);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-button.primary:hover {
+            background: linear-gradient(135deg, var(--gray-300), var(--gray-400));
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+        }
+
+        .hero-button.secondary {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .hero-button.secondary:hover {
+            background: var(--card-color);
+            border-color: var(--text-secondary);
+            transform: translateY(-3px);
         }
 
         @keyframes titleGlow {
@@ -1274,6 +1317,109 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--gray-500);
         }
+        @media (max-width: 992px) {
+    .hero {
+        padding: 3rem 1.5rem;
+    }
+    
+    .hero-logo {
+        height: 60px;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.3rem;
+    }
+    
+    .hero-content p {
+        font-size: 1rem;
+    }
+    
+    .hero-button {
+        padding: 0.875rem 1.75rem;
+        font-size: 0.95rem;
+    }
+}
+
+/* Мобильные устройства */
+@media (max-width: 768px) {
+    .hero {
+        padding: 2.5rem 1rem;
+        min-height: calc(100vh - var(--header-height) - 2rem);
+    }
+    
+    .hero-logo {
+        height: 50px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .hero-content p {
+        font-size: 0.95rem;
+        line-height: 1.7;
+        margin-bottom: 2rem;
+    }
+    
+    /* Убираем переносы строк на мобильных */
+    .hero-content p br {
+        display: none;
+    }
+    
+    .hero-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .hero-button {
+        width: 100%;
+        justify-content: center;
+        padding: 0.875rem 1.5rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Маленькие мобильные */
+@media (max-width: 480px) {
+    .hero {
+        padding: 2rem 1rem;
+    }
+    
+    .hero-logo {
+        height: 40px;
+        margin-bottom: 1rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+    
+    .hero-content p {
+        font-size: 0.9rem;
+    }
+    
+    .hero-button {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Очень маленькие экраны */
+@media (max-width: 360px) {
+    .hero-logo {
+        height: 35px;
+    }
+    
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+    
+    .hero-content p {
+        font-size: 0.85rem;
+    }
+}
     </style>
 </head>
 <body>
@@ -1307,18 +1453,28 @@
    <main class="main-content">
        <!-- Hero Section -->
        <section class="hero">
-           <div class="hero-content">
-               <h3 class="hero-title"><img src="/static/images/1v.png" alt="Логотип" class="logo-img hero-logo"></h3>
-               <p class="hero-subtitle">Реквизит для съёмок, фотосессий и событий</p>
-               <p>Abstract Props — склад предметов для кадра.<br>
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <img src="{% static 'images/1v.png' %}" alt="Abstract Props" class="hero-logo">
+            </h1>
+            <p class="hero-subtitle">Реквизит для съёмок, фотосессий и событий</p>
+            <p>
+                Abstract Props — склад предметов для кадра.<br>
                 Мебель, текстиль, посуда, декор, светильники и сотни других вещей,<br>
-                которые помогают оживить пространство и рассказать историю</p>
-               <div class="hero-buttons">
-                   <a href="/catalog/" class="hero-button primary">Посмотреть каталог</a>
-                   <a href="#services" class="hero-button secondary">Как это работает</a>
-               </div>
-           </div>
-       </section>
+                которые помогают оживить пространство и рассказать историю
+            </p>
+            <div class="hero-buttons">
+                <a href="{% url 'rental:product_list' %}" class="hero-button primary">
+                    <i class="fas fa-th-large"></i>
+                    Посмотреть каталог
+                </a>
+                <a href="#services" class="hero-button secondary">
+                    <i class="fas fa-info-circle"></i>
+                    Как это работает
+                </a>
+            </div>
+        </div>
+    </section>
 
        <!-- Company Info Section -->
        <section class="company-info" id="about">

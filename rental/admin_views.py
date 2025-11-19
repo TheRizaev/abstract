@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Q
+from django.db.models.functions import Lower
 from django.http import JsonResponse, HttpResponse
 from .models import Product, Order, OrderItem, Storage, Shelf, Tag
 from .forms import ProductForm, StorageForm, ShelfForm, OrderForm
@@ -13,6 +14,7 @@ import barcode
 from barcode.writer import ImageWriter
 from PIL import Image
 import qrcode
+import re
 
 def is_admin(user):
     return user.is_authenticated and user.is_staff
@@ -48,12 +50,19 @@ def admin_orders(request):
     
     search_query = request.GET.get('search', '')
     if search_query:
-        search_query = search_query.strip()
-        orders = orders.filter(
-            Q(contact_person__icontains=search_query) |
-            Q(phone1__icontains=search_query) |
-            Q(id__icontains=search_query)
-        )
+        search_query = search_query.strip().lower()
+        
+        # Получаем все товары и фильтруем в Python
+        all_products = Product.objects.all()
+        product_ids = []
+        
+        for product in all_products:
+            if (search_query in (product.name or '').lower() or
+                search_query in (product.article or '').lower() or
+                search_query in (product.description or '').lower()):
+                product_ids.append(product.id)
+        
+        products = Product.objects.filter(id__in=product_ids)
     
     context = {
         'orders': orders,
@@ -253,12 +262,31 @@ def product_management(request):
     
     search_query = request.GET.get('search', '')
     if search_query:
-        search_query = search_query.strip()
-        products = products.filter(
-            Q(name__icontains=search_query) |
-            Q(article__icontains=search_query) |
-            Q(description__icontains=search_query)
-        )
+        search_query = search_query.strip().lower()
+        
+        # Получаем все заявки и фильтруем в Python
+        all_orders = Order.objects.all()
+        order_ids = []
+        
+        for order in all_orders:
+            if (search_query in (order.contact_person or '').lower() or
+                search_query in (order.phone1 or '').lower() or
+                search_query in str(order.id)):
+                order_ids.append(order.id)
+        
+        orders = Order.objects.filter(id__in=order_ids)
+        
+        # Если не нашли, пробуем через Lower
+        if not products.exists():
+            products = Product.objects.annotate(
+                name_lower=Lower('name'),
+                desc_lower=Lower('description'),
+                article_lower=Lower('article')
+            ).filter(
+                Q(name_lower__contains=search_lower) |
+                Q(article_lower__contains=search_lower) |
+                Q(desc_lower__contains=search_lower)
+            )
     
     # Применяем сортировку
     if sort_by == 'date_desc':
@@ -388,17 +416,33 @@ def inventory_view(request):
     
     search_query = request.GET.get('search', '')
     if search_query:
-        search_query = search_query.strip()
-        products = products.filter(
-            Q(name__icontains=search_query) |
-            Q(article__icontains=search_query) |
-            Q(shelf__storage__name__icontains=search_query) |
-            Q(shelf__number__icontains=search_query)
-        )
+        search_query = search_query.strip().lower()
+        
+        # Получаем все заявки и фильтруем в Python
+        all_orders = Order.objects.all()
+        order_ids = []
+        
+        for order in all_orders:
+            if (search_query in (order.contact_person or '').lower() or
+                search_query in (order.phone1 or '').lower() or
+                search_query in str(order.id)):
+                order_ids.append(order.id)
+        
+        orders = Order.objects.filter(id__in=order_ids)
+        
+        # Если не нашли, пробуем через Lower
+        if not products.exists():
+            products = Product.objects.annotate(
+                name_lower=Lower('name'),
+                article_lower=Lower('article')
+            ).filter(
+                Q(name_lower__contains=search_lower) |
+                Q(article_lower__contains=search_lower)
+            )
     
     storage_filter = request.GET.get('storage', '')
     if storage_filter:
-        products = products.filter(shelf__storage__name=storage_filter)
+        products = products.filter(shelf__storage__name__iexact=storage_filter)
     
     storages = Storage.objects.all()
     

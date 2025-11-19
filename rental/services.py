@@ -145,22 +145,31 @@ class SmartSearchService:
     
     def fallback_search(self, query: str) -> List[int]:
         """
-        Резервный поиск (по совпадениям)
+        Резервный поиск (по совпадениям) - регистронезависимый для кириллицы
         """
         terms = query.lower().split()
-        q_objects = Q()
         
-        for term in terms:
-            if len(term) > 2:
-                q_objects |= (
-                    Q(name__icontains=term) |
-                    Q(description__icontains=term) |
-                    Q(article__icontains=term)
-                )
+        if not terms:
+            return []
         
-        if q_objects:
-            return list(Product.objects.filter(q_objects).values_list("id", flat=True))
-        return []
+        # Получаем все товары и фильтруем в Python
+        all_products = Product.objects.all()
+        product_ids = []
+        
+        for product in all_products:
+            name_lower = (product.name or '').lower()
+            description_lower = (product.description or '').lower()
+            article_lower = (product.article or '').lower()
+            
+            for term in terms:
+                if len(term) > 2:
+                    if (term in name_lower or
+                        term in description_lower or
+                        term in article_lower):
+                        product_ids.append(product.id)
+                        break  # Нашли совпадение, переходим к следующему товару
+        
+        return product_ids
     
     def smart_search(self, query: str) -> List[Product]:
         """
@@ -172,13 +181,24 @@ class SmartSearchService:
         product_ids = self.search_with_chatgpt(query)
         
         if not product_ids:
-            return Product.objects.none()
+            # Если ChatGPT не нашел результаты, используем fallback поиск
+            product_ids = self.fallback_search(query)
+            if not product_ids:
+                return Product.objects.none()
         
         products = Product.objects.filter(id__in=product_ids)
         product_dict = {p.id: p for p in products}
         
         ordered = [product_dict[pid] for pid in product_ids if pid in product_dict]
         return ordered
+    
+    def expand_search_query(self, query: str) -> str:
+        """
+        Расширяет поисковый запрос синонимами и вариациями
+        """
+        # Простое расширение - возвращаем тот же запрос
+        # Можно добавить словарь синонимов при необходимости
+        return query.strip()
 
 # Глобальный экземпляр
 smart_search_service = SmartSearchService()
